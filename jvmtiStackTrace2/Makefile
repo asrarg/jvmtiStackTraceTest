@@ -1,22 +1,37 @@
 # Define a variable for classpath
-CLASS_PATH = ../bin
+CLASS_PATH = .
+
+CURRENT=$(!C:)
+JAVA_HOME=C:/Program Files/Java/jdk1.8.0_144
+JAVA=$(JAVA_HOME)/bin/java.exe
+JAVAC=$(JAVA_HOME)/bin/javac.exe
+JAVAH=$(JAVA_HOME)/bin/javah.exe
+GCC=C:/cygwin64/bin/x86_64-w64-mingw32-gcc-6.4.0.exe
+OPTIONS=-Wl,--add-stdcall-alias
+SYSINC=win32
 
 # Define a virtual path for .class in the bin directory
 vpath %.class $(CLASS_PATH)
 
-all : jnitestMAKEFILE.dll
+all : clean test
 
 # $@ matches the target, $< matches the first dependancy
 jnitestMAKEFILE.dll : jnitestMAKEFILE.o
-	gcc -m64 -Wl,--add-stdcall-alias -shared -o $@ $<
+	"$(GCC)" -m64  -shared -o $@ $<
 
 # $@ matches the target, $< matches the first dependancy
 jnitestMAKEFILE.o : jnitest.c JNITest.h
-	gcc -m64 -I"C:\Program Files\Java\jdk1.8.0_144\include" -I"C:\Program Files\Java\jdk1.8.0_144\include\win32" -D__int64="long long" -c $< -o $@
+	"$(GCC)" -m64 -I"$(JAVA_HOME)/include" -I"$(JAVA_HOME)/include/$(SYSINC)" -D__int64="long long" -c $< -o $@
 
 # $* matches the target filename without the extension
 JNITest.h : JNITest.class
-	javah -classpath $(CLASS_PATH) $*
+	"$(JAVAH)" -classpath $(CLASS_PATH) $*
 
+JNITest.class: JNITest.java
+	"$(JAVAC)" -d . JNITest.java
+	
 clean :
-	rm JNITest.h jnitestMAKEFILE.o jnitestMAKEFILE.dll
+	rm -f JNITest.h jnitestMAKEFILE.o jnitestMAKEFILE.dll JNITest.class
+	
+test: jnitestMAKEFILE.dll JNITest.class
+	"$(JAVA)" -agentpath:"$(CURRENT)/jnitestMAKEFILE.dll" -classpath . JNITest
