@@ -23,6 +23,8 @@ public class JNITest {
 	public native String[] getStringArray();
 
 	public native String[] getTopMethods();
+	
+	//public native void Sampling();
 
 	// variables
 	public static double x = 0;
@@ -51,6 +53,8 @@ public class JNITest {
 		});
 
 		jniObject.printTopMethodOfThreads();
+		
+		//jniObject.Sampling();
 
 		jniObject.printCurrentCpuTime();
 
@@ -77,4 +81,5 @@ public class JNITest {
 		long cpuTime = getCurrentThreadCpuTime();
 		System.out.println("Current thread cpu time is: " + cpuTime);
 	}
+
 }
