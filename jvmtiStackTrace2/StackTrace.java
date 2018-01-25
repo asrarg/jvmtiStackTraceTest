@@ -1,4 +1,3 @@
-import java.util.concurrent.ExecutorService;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.nio.ByteBuffer;
@@ -16,7 +15,6 @@ public class StackTrace {
 	public native void setBuffers(ByteBuffer buff); //setting the buffers
 	static ByteBuffer jbuff;
 
-	//public static ExecutorService executorService;
 
 	static final Producer PRODUCER;
 	static final EventToken WORK_EVENT_TOKEN;
@@ -45,6 +43,7 @@ public class StackTrace {
 		return null;
 	}
 
+	//check if buffer has data in it
 	private static boolean hasData(ByteBuffer j){
 		int checks = 0;
 		for (byte b : j) {
@@ -112,13 +111,11 @@ public class StackTrace {
 					jBuff.wait();
 				}
 			}
-			if(hasData(jBuff) == false)
-			{
-				//read the buffer
-
-			}
+			
 		}
-		public void consume() throws InterruptedException
+		
+		//consume method
+		public void consume(ByteBuffer JB) throws InterruptedException
 		{
 			while (true)
 			{
@@ -129,17 +126,18 @@ public class StackTrace {
 					{
 						jBuff.wait();
 					}
-
-					//to retrive the first job in the list
-					int val = jBuff.removeFirst();
-
-					System.out.println("Consumer consumed-"
-							+ val);
-
 					// Wake up producer/worker thread
 					wthread.notify();
 
 				}
+				if(hasData(jBuff) == false)
+				{
+					//read the buffer
+					
+					
+					System.out.println("Consumer consumed-"+ val);
+				}
+				
 			}
 		}
 

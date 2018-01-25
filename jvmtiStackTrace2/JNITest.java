@@ -31,7 +31,8 @@ public class JNITest {
 
 	public static ExecutorService executorService;
 
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws Exception {#
+		Thread t = new Thread();
 		JNITest jniObject = new JNITest();
 		jniObject.greet();
 

@@ -65,7 +65,7 @@ JNIExport void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject b1 /*,job
 
 	if(b1 == NULL)
 	{
-		jclass cls = (*env)->FindClass(env, "java/lang/Thread");;
+		jclass cls = (*env)->FindClass(env, "java/lang/String");;
 		(*env)->ThrowNew(env, "Buffer must not be Null", cls)
 		return;
 	}
@@ -85,6 +85,8 @@ JNIExport void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject b1 /*,job
 
 void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 {
+	jclass threadClass = (*env)->FindClass(env, "java/lang/Thread");
+	int tidFieldId = (*env)->GetStaticFieldID(env, threadClass, "tid", "J");
 	jlong currentPos = 0;
 
 	while (g_stackTraceRunning)
@@ -100,6 +102,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 			check_jvmti_error(err, "Error while getting thread infos");
 			continue;
 		}
+		jlong currentOffset = sizeof(int32_t);
 		for (int i = 0; i < thread_count; i++) {
 
 			//creating array for all thread contents of this thread (not adding frames yet)
@@ -108,21 +111,27 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 			// extracting some variables
 			jvmtiStackInfo *infop = &stack_info[i];
 			jthread thread = infop->thread;
+			jint tid = (*env)->GetStaticLongField(env, thread, tidFieldId);
 			jint state = infop->state;
 			jint frame_count = infop->frame_count;
 			jvmtiFrameInfo *frames = infop->frame_buffer;
+			memcpy(&g_dataBuffer[currentOffset], &tid, sizeof(jint));
+			currentOffset += sizeof(jint);
+			memcpy(&g_dataBuffer[currentOffset], &state, sizeof(jint));
+			currentOffset += sizeof(jint);
+			memcpy(&g_dataBuffer[currentOffset], &frame_count, sizeof(jint));
+			currentOffset += sizeof(jint);
 
-			/*
-			threadData[0] = thread;
-			threadData[1] = state;
-			threadData[2] = frame_count;*/
 
 			//creating array for all frame contents of this thread
-			int arrSize = frame_count*2*sizeof(int32_t); //each frame has 2 elements (method and location)
+			int elementsSize = frame_count*2*sizeof(int32_t); //each frame has 2 elements (method and location)
+
+			g_dataBuffer[0] = 1;
+			g_dataBuffer[1] = thread_count;
 			for(int j=0;j<frame_count;j++) //loop through frames and get method and location of each frame.
 			{
 				//assuming 2 threads, t1 has 2 frames, t2 has 1 frame     frame 1
-				for(int f = 2; f < (3+arrSize); f+3+frame_count)//2, 7, 2+3+2=7 ||
+				for(int f = 2; f < (3+elementsSize); f+3+frame_count)//2, 7, 2+3+2=7 ||
 				{
 					g_dataBuffer[f] = thread;
 					g_dataBuffer[f+1] = state;
