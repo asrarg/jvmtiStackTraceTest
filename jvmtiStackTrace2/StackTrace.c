@@ -122,43 +122,22 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 			memcpy(&g_dataBuffer[currentOffset], &frame_count, sizeof(jint));
 			currentOffset += sizeof(jint);
 
-
-			//creating array for all frame contents of this thread
 			int elementsSize = frame_count*2*sizeof(int32_t); //each frame has 2 elements (method and location)
-
-			g_dataBuffer[0] = 1;
-			g_dataBuffer[1] = thread_count;
-			for(int j=0;j<frame_count;j++) //loop through frames and get method and location of each frame.
+			for(int j=0; j<frame_count;j++)
 			{
-				//assuming 2 threads, t1 has 2 frames, t2 has 1 frame     frame 1
-				for(int f = 2; f < (3+elementsSize); f+3+frame_count)//2, 7, 2+3+2=7 ||
-				{
-					g_dataBuffer[f] = thread;
-					g_dataBuffer[f+1] = state;
-					g_dataBuffer[f+2] = frame_count;
-					g_dataBuffer[f+3] = frames[j].method;
-					g_dataBuffer[f+4] = frames[j].location;
-				}
+				memcpy(&g_dataBuffer[currentOffset], &frames[j].method, sizeof(jint));
+				currentOffset += sizeof(jint);
+				memcpy(&g_dataBuffer[currentOffset], &frames[j].location, sizeof(jint));
+				currentOffset += sizeof(jint);
 
 			} //end of frames loop
-
-
-
-
-
-
 		} //end of threads loop
-
-
-
-
-
 	}
 
 }
 // #####################################################################################################################
 //getting stack trace in a buffer and linearizing the buffer
-JNIEXPORT jobjectArray JNICALL Java_StackTrace_startStackTrace(JNIEnv *env)
+JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env)
 {
 	// Check whether Thread already started g_stackTraceRunning
 	jclass threadClass = (*env)->FindClass(env, "java/lang/Thread");
@@ -173,11 +152,12 @@ JNIEXPORT jobjectArray JNICALL Java_StackTrace_startStackTrace(JNIEnv *env)
 	if (obj == NULL)
 		printf("jobject error.");
 
+	// Set Daemon Thread
 
 	jvmtiError error = (*jvmti)->RunAgentThread(jvmti, threadObj, getStackTrace, NULL, JVMTI_THREAD_MAX_PRIORITY);
 
 	check_jvmti_error(error, "Could not start thread");
-	return NULL;
+	return;
 
 }
 

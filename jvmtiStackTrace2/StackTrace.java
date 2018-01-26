@@ -7,7 +7,7 @@ public class StackTrace {
 	//public native void setSTSleepTime(int x); //setting the sleep time for stack trace (how often to get ST)
 	//public native void stackTraceSwitch(int x, boolean x); //switch fetching for stack traces on and off in addition to the sleep time
 
-	public native ByteBuffer startStackTrace(); //getting stack trace as a lineared byte buffer every x ms (y is for switching fetching for stacktrace on or off)
+	public native void startStackTrace(); //getting stack trace as a lineared byte buffer every x ms (y is for switching fetching for stacktrace on or off)
 	public native boolean detectBlackSwan(); //is there a black Swan event?
 	public native String[] getTopMethods(); //getting top methods in stack trace
 	public native String getCurrentThreadName(); //getting current thread name
@@ -24,7 +24,7 @@ public class StackTrace {
 		PRODUCER.register();
 	}
 	//Creating event token.
-	public static EventToken createToken(Class <= extends InstantEvent> clazz) {
+	public static EventToken createToken(Class <? extends InstantEvent> clazz) {
 		try {
 			return PRODUCER.addEvent(clazz);
 		} catch (Exception e) {
@@ -82,13 +82,7 @@ public class StackTrace {
 
 		jBuff = ByteBuffer.allocateDirect(1000);
 		jniObject.setBuffers(jBuff);
-
-
-		//worker thread
-		Thread wthread = new Thread();
-		wthread = new Thread(new Worker(), "Worker Thread " + i); //this producer
-		wthread.setDaemon(true);
-		wthread.start();
+		jniObject.startStackTrace()
 
 		//ThreadMXBean bean = ManagementFactory.getThreadMXBean();  //(((get it from native and send to here)))
 		// Get the current number of live threads including both daemon and non-daemon threads.
@@ -102,43 +96,22 @@ public class StackTrace {
 		}
 
 		//threads and synch
-		Thread cthread = new Thread(); //creating consumer thread/ controller thread
-		cthread.setDaemon(true);
-		cthread.start();
 		while(true){
 			synchronized (jBuff) {
-				if(hasData(jBuff) == true){ //true = empty, false = has data
+				if( !hasData(jBuff) ){ //true = empty, false = has data
 					jBuff.wait();
 				}
 			}
-			
+			consume(jBuff)
 		}
 		
 		//consume method
-		public void consume(ByteBuffer JB) throws InterruptedException
+		public void consume(ByteBuffer jBuff) throws InterruptedException
 		{
-			while (true)
-			{
-				synchronized (jBuff)
-				{
-					// consumer thread waits while list is empty
-					if(hasData(jBuff) == true)
-					{
-						jBuff.wait();
-					}
-					// Wake up producer/worker thread
-					wthread.notify();
-
-				}
-				if(hasData(jBuff) == false)
-				{
-					//read the buffer
-					
-					
-					System.out.println("Consumer consumed-"+ val);
-				}
-				
+			if ( !hasData(jb) ){
+				return;
 			}
+			// print all Data from jb, 
 		}
 
 
