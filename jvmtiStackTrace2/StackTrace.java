@@ -11,39 +11,13 @@ public class StackTrace {
 	public native boolean detectBlackSwan(); //is there a black Swan event?
 	public native String[] getTopMethods(); //getting top methods in stack trace
 	public native String getCurrentThreadName(); //getting current thread name
+	public native int getThreadCount();
 
 	public native void setBuffers(ByteBuffer buff); //setting the buffers
 	static ByteBuffer jbuff;
 
 
-	static final Producer PRODUCER;
-	static final EventToken WORK_EVENT_TOKEN;
-	static {
-		PRODUCER = createProducer();
-		WORK_EVENT_TOKEN = createToken(WorkEvent.class);
-		PRODUCER.register();
-	}
-	//Creating event token.
-	public static EventToken createToken(Class <? extends InstantEvent> clazz) {
-		try {
-			return PRODUCER.addEvent(clazz);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
-	//Creating producer thread.
-	private static Producer createProducer() {
-		try {
-			return new Producer("Producer:","Creating ...");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
-	//check if buffer has data in it
+	//check if buffer has data in it (this is not correct! should be by the current position)
 	private static boolean hasData(ByteBuffer j){
 		int checks = 0;
 		for (byte b : j) {
@@ -54,7 +28,7 @@ public class StackTrace {
 		return (checks == 0);
 	}
 
-
+	// ###############################################MAIN################################################################
 	public static void main(String[] args) throws Exception {
 		StackTrace jniObject = new StackTrace();
 
@@ -72,21 +46,14 @@ public class StackTrace {
 			System.out.println("Got NULL from JNI.");
 		}
 
-		//stack trace is recevied as a lineared byte buffer
-		//Buffer size
-		//int BUFFER_SIZE = 100;
-		//Allocates a ByteBuffer  with a size of a 100
-		//ByteBuffer byteBuffer = ByteBuffer.allocate(BUFFER_SIZE);
-
 		//******************* BUFFERS AND THREADS *******************
 
 		jBuff = ByteBuffer.allocateDirect(1000);
 		jniObject.setBuffers(jBuff);
 		jniObject.startStackTrace()
 
-		//ThreadMXBean bean = ManagementFactory.getThreadMXBean();  //(((get it from native and send to here)))
-		// Get the current number of live threads including both daemon and non-daemon threads.
-		//int threadCount = bean.getThreadCount();
+		// Get the current number of live threads
+		int threadCount = jniObject.getThreadCount();
 		Thread[] threads = new Thread[threadCount];
 		thread *arr[] = jniObject.startStackTrace();//switch this to java
 		for(int i=0; i<arr.length; i++)

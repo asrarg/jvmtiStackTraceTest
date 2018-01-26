@@ -36,57 +36,65 @@ void check_jvmti_error(jvmtiError error, char *str) {
 }
 
 // #####################################################################################################################
-// Sample method - prints a text to the console
-/*JNIEXPORT void JNICALL Java_StackTrace_stackTraceSwitch(JNIEnv *env, jobject obj, int x, bool) {
-      printf("NATIVE: Switching getting Stack Trace method on or off and sleep time...\n");
-      getStackTrace(x, bool);
-
-}*/
-
-
-// #####################################################################################################################
 JNIEXPORT void JNICALL Java_StackTrace_setSleepTime(JNIEnv *env, jint sleepTime)
 {
 	if ( sleepTime <= 0 ) {
-		//handle Error
+		jclass cls = (*env)->FindClass(env, "java/lang/String");;
+		(*env)->ThrowNew(env, "sleepTime must not be 0", cls)
+				return;
 	}
 	g_sleepTimer = sleepTime;
 }
-
+// #####################################################################################################################
 JNIEXPORT jboolean JNICALL Java_StackTrace_getStackTraceRunning(JNIEnv *env)
 {
 	return g_stackTraceRunning;
 }
 
-
-JNIExport void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject b1 /*,jobject b2*/)
-
+// #####################################################################################################################
+JNIEXPORT jint JNICALL Java_StackTrace_getThreadCount(JNIEnv *env)
 {
 
+	jvmtiStackInfo *stack_info;
+	jint thread_count;
+
+	jvmtiError err;
+
+	jobjectArray myArray = NULL;
+
+	// fetching all stack traces, but just the first frame of each thread
+	err = (*jvmti)->GetAllStackTraces(jvmti, 1, &stack_info, &thread_count);
+	if (err != JVMTI_ERROR_NONE) {
+		check_jvmti_error(err, "Error while getting thread infos");
+	}
+	return thread_count;
+}
+// #####################################################################################################################
+JNIExport void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject b1)
+
+{
 	if(b1 == NULL)
 	{
 		jclass cls = (*env)->FindClass(env, "java/lang/String");;
 		(*env)->ThrowNew(env, "Buffer must not be Null", cls)
-		return;
+				return;
 	}
-
-	//jbyteArray arr1=(*env)->NewByteArray(env, bufferSize);
-	//jbyteArray arr2=(*env)->NewByteArray(env, bufferSize);
-	//jobject obj = env->NewDirectByteBuffer(buf, size);
-	//env->NewGlobalRef(obj);
-
-	g_dataBuffer = (jbyte *) env->GetDirectBufferAddress(b1); //just check if it works on most jvms/platforms
+	//setting the global buffer.
+	g_dataBuffer = (jbyte *) env->GetDirectBufferAddress(b1);
 	g_dataReference = (*env)->NewGlobalRef(env, b1);
-	g_dataCapacity = (*env)->GetDirectBufferCapacity(env, b1);//add wait time,
+	g_dataCapacity = (*env)->GetDirectBufferCapacity(env, b1);
 }
 
 
 
-
+// #####################################################################################################################
 void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 {
+	//getting the ID field of the thread
 	jclass threadClass = (*env)->FindClass(env, "java/lang/Thread");
 	int tidFieldId = (*env)->GetStaticFieldID(env, threadClass, "tid", "J");
+
+	//current position of pointer
 	jlong currentPos = 0;
 
 	while (g_stackTraceRunning)
@@ -96,7 +104,6 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 		jint thread_count;
 
 		jvmtiError err;
-
 		err = (*jvmti)->GetAllStackTraces(jvmti, 1, &stack_info, &thread_count);
 		if (err != JVMTI_ERROR_NONE) {
 			check_jvmti_error(err, "Error while getting thread infos");
@@ -104,10 +111,6 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 		}
 		jlong currentOffset = sizeof(int32_t);
 		for (int i = 0; i < thread_count; i++) {
-
-			//creating array for all thread contents of this thread (not adding frames yet)
-			//jbyteArray threadData = (*env)->NewByteArray(env);
-
 			// extracting some variables
 			jvmtiStackInfo *infop = &stack_info[i];
 			jthread thread = infop->thread;
@@ -129,13 +132,13 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 				currentOffset += sizeof(jint);
 				memcpy(&g_dataBuffer[currentOffset], &frames[j].location, sizeof(jint));
 				currentOffset += sizeof(jint);
-
 			} //end of frames loop
 		} //end of threads loop
 	}
 
 }
 // #####################################################################################################################
+
 //getting stack trace in a buffer and linearizing the buffer
 JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env)
 {
@@ -154,6 +157,7 @@ JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env)
 
 	// Set Daemon Thread
 
+
 	jvmtiError error = (*jvmti)->RunAgentThread(jvmti, threadObj, getStackTrace, NULL, JVMTI_THREAD_MAX_PRIORITY);
 
 	check_jvmti_error(error, "Could not start thread");
@@ -161,6 +165,7 @@ JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env)
 
 }
 
+// #####################################################################################################################
 JNIEXPORT jobjectArray JNICALL Java_StackTrace_stopStackTrace(JNIEnv *env)
 {
 	g_stackTraceRunning = false;
