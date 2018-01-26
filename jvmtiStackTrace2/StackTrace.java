@@ -48,7 +48,7 @@ public class StackTrace {
 
 		//******************* BUFFERS AND THREADS *******************
 
-		jBuff = ByteBuffer.allocateDirect(1000);
+		jBuff = ByteBuffer.allocateDirect(10000);
 		jniObject.setBuffers(jBuff);
 		jniObject.startStackTrace()
 

@@ -39,7 +39,7 @@ void check_jvmti_error(jvmtiError error, char *str) {
 JNIEXPORT void JNICALL Java_StackTrace_setSleepTime(JNIEnv *env, jint sleepTime)
 {
 	if ( sleepTime <= 0 ) {
-		jclass cls = (*env)->FindClass(env, "java/lang/String");;
+		jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");;
 		(*env)->ThrowNew(env, "sleepTime must not be 0", cls)
 				return;
 	}
@@ -67,6 +67,8 @@ JNIEXPORT jint JNICALL Java_StackTrace_getThreadCount(JNIEnv *env)
 	if (err != JVMTI_ERROR_NONE) {
 		check_jvmti_error(err, "Error while getting thread infos");
 	}
+	err = (*jvmti)->Deallocate(jvmti, (unsigned char *)stack_info);
+	check_jvmti_error(err, "Error while deallocating memory");
 	return thread_count;
 }
 // #####################################################################################################################
@@ -75,7 +77,7 @@ JNIExport void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject b1)
 {
 	if(b1 == NULL)
 	{
-		jclass cls = (*env)->FindClass(env, "java/lang/String");;
+		jclass cls = (*env)->FindClass(env, "java/lang/String"); //TODO string is not an exception
 		(*env)->ThrowNew(env, "Buffer must not be Null", cls)
 				return;
 	}
@@ -92,10 +94,13 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 {
 	//getting the ID field of the thread
 	jclass threadClass = (*env)->FindClass(env, "java/lang/Thread");
-	int tidFieldId = (*env)->GetStaticFieldID(env, threadClass, "tid", "J");
+	int tidFieldId = (*env)->GetFieldID(env, threadClass, "tid", "J");
 
 	//current position of pointer
 	jlong currentPos = 0;
+
+	//TODO extract the size to a local variable
+	int sOfInt = sizeof(jint);
 
 	while (g_stackTraceRunning)
 	{
@@ -114,26 +119,32 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 			// extracting some variables
 			jvmtiStackInfo *infop = &stack_info[i];
 			jthread thread = infop->thread;
-			jint tid = (*env)->GetStaticLongField(env, thread, tidFieldId);
+			jint tid = (*env)->GetLongField(env, thread, tidFieldId);
 			jint state = infop->state;
 			jint frame_count = infop->frame_count;
 			jvmtiFrameInfo *frames = infop->frame_buffer;
-			memcpy(&g_dataBuffer[currentOffset], &tid, sizeof(jint));
-			currentOffset += sizeof(jint);
-			memcpy(&g_dataBuffer[currentOffset], &state, sizeof(jint));
-			currentOffset += sizeof(jint);
-			memcpy(&g_dataBuffer[currentOffset], &frame_count, sizeof(jint));
-			currentOffset += sizeof(jint);
+			memcpy(&g_dataBuffer[currentOffset], &tid, sOfInt);
+			currentOffset += sOfInt;
+			memcpy(&g_dataBuffer[currentOffset], &state, sOfInt);
+			currentOffset += sOfInt;
+			memcpy(&g_dataBuffer[currentOffset], &frame_count, sOfInt);
+			currentOffset += sOfInt;
 
 			int elementsSize = frame_count*2*sizeof(int32_t); //each frame has 2 elements (method and location)
 			for(int j=0; j<frame_count;j++)
 			{
-				memcpy(&g_dataBuffer[currentOffset], &frames[j].method, sizeof(jint));
-				currentOffset += sizeof(jint);
-				memcpy(&g_dataBuffer[currentOffset], &frames[j].location, sizeof(jint));
-				currentOffset += sizeof(jint);
+				memcpy(&g_dataBuffer[currentOffset], &frames[j].method, sOfInt);
+				currentOffset += sOfInt;
+				memcpy(&g_dataBuffer[currentOffset], &frames[j].location, sOfInt); // are we needing this at all??
+				currentOffset += sOfInt;
+
+				err = (*jvmti)->Deallocate(jvmti, (unsigned char *)stack_info);
+				check_jvmti_error(err, "Error while deallocating memory");
 			} //end of frames loop
+
 		} //end of threads loop
+		currentPos = currentOffset;
+
 	}
 
 }
@@ -155,7 +166,7 @@ JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env)
 	if (obj == NULL)
 		printf("jobject error.");
 
-	// Set Daemon Thread
+	// Set Daemon Thread //TODO check differecne between daemon and agent thread
 
 
 	jvmtiError error = (*jvmti)->RunAgentThread(jvmti, threadObj, getStackTrace, NULL, JVMTI_THREAD_MAX_PRIORITY);
