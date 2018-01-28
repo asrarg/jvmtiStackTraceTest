@@ -77,7 +77,7 @@ JNIExport void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject b1)
 {
 	if(b1 == NULL)
 	{
-		jclass cls = (*env)->FindClass(env, "java/lang/String"); //TODO string is not an exception
+		jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
 		(*env)->ThrowNew(env, "Buffer must not be Null", cls)
 				return;
 	}
@@ -99,8 +99,17 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 	//current position of pointer
 	jlong currentPos = 0;
 
+
 	//TODO extract the size to a local variable
 	int sOfInt = sizeof(jint);
+
+	jint enterStatus = (*env)->MonitorEnter(env, g_dataReference);
+	if(enterStatus != JNI_OK)
+	{
+		jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
+		(*env)->ThrowNew(env, "Error during Monitor Enter", cls)
+				return;
+	}
 
 	while (g_stackTraceRunning)
 	{
@@ -137,14 +146,22 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 				currentOffset += sOfInt;
 				memcpy(&g_dataBuffer[currentOffset], &frames[j].location, sOfInt); // are we needing this at all??
 				currentOffset += sOfInt;
-
-				err = (*jvmti)->Deallocate(jvmti, (unsigned char *)stack_info);
-				check_jvmti_error(err, "Error while deallocating memory");
 			} //end of frames loop
-
 		} //end of threads loop
+
+		err = (*jvmti)->Deallocate(jvmti, (unsigned char *)stack_info);
+		check_jvmti_error(err, "Error while deallocating memory");
 		currentPos = currentOffset;
 
+		break;
+	}
+	notifyAll(g_dataBuffer);
+	jint exitStatus = (*env)->MonitorExit(env, g_dataReference);
+	if(exitStatus != JNI_OK)
+	{
+		jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
+		(*env)->ThrowNew(env, "Error during Monitor Exit", cls)
+				return;
 	}
 
 }
