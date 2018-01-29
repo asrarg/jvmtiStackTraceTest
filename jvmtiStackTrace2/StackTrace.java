@@ -19,12 +19,7 @@ public class StackTrace {
 
 	//check if buffer has data in it (this is not correct! should be by the current position)
 	private static boolean hasData(ByteBuffer j){
-		int checks = 0;
-		for (byte b : j) {
-			if (b != 0) {
-				checks++;
-			}
-		}
+		if(j.position() == 0)
 		return (checks == 0);
 	}
 
@@ -54,13 +49,13 @@ public class StackTrace {
 
 		// Get the current number of live threads
 		int threadCount = jniObject.getThreadCount();
-		Thread[] threads = new Thread[threadCount];
-		thread *arr[] = jniObject.startStackTrace();//switch this to java
+		/*Thread[] threads = new Thread[threadCount];
+		thread arr[] = jniObject.startStackTrace();//switch this to java
 		for(int i=0; i<arr.length; i++)
 		{
 			//arr[i] = 
 
-		}
+		}*/
 
 		//threads and synch
 		while(true){
@@ -75,10 +70,21 @@ public class StackTrace {
 		//consume method
 		public void consume(ByteBuffer jBuff) throws InterruptedException
 		{
-			if ( !hasData(jb) ){
+			if ( !hasData(jBuff) ){
+				
 				return;
 			}
-			// print all Data from jb, 
+			while(jBuff.hasRemaining())
+			{
+				//jBuff.position() + " -> " + jBuff.get();
+				jBuff.limit(jBuff.position());
+				int limit = jBuff.limit();
+				//check thread count and frame count for every thread so we can de code the buffer.
+				//still working on it
+				byte b = jBuff.get();
+				
+				
+			}
 		}
 
 

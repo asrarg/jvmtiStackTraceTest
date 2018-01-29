@@ -90,6 +90,7 @@ JNIExport void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject b1)
 
 
 // #####################################################################################################################
+//getting stack trace in a buffer and linearizing the buffer
 void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 {
 	//getting the ID field of the thread
@@ -167,7 +168,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 }
 // #####################################################################################################################
 
-//getting stack trace in a buffer and linearizing the buffer
+//starting stack trace
 JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env)
 {
 	// Check whether Thread already started g_stackTraceRunning
