@@ -1,3 +1,5 @@
+#include <windows.h>
+#include <winbase.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include<stdio.h>
@@ -15,7 +17,6 @@ static jbyte *g_dataBuffer = NULL;
 static jlong g_dataCapacity;
 static bool g_stackTraceRunning;
 static int32_t g_sleepTimer;
-static bufferSize;
 
 // #####################################################################################################################
 // Checking jvmtiErrors and print them out.
@@ -36,23 +37,23 @@ void check_jvmti_error(jvmtiError error, char *str) {
 }
 
 // #####################################################################################################################
-JNIEXPORT void JNICALL Java_StackTrace_setSleepTime(JNIEnv *env, jint sleepTime)
+JNIEXPORT void JNICALL Java_StackTrace_setSleepTime(JNIEnv *env, jobject obj, jint sleepTime)
 {
 	if ( sleepTime <= 0 ) {
 		jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");;
-		(*env)->ThrowNew(env, "sleepTime must not be 0", cls)
-				return;
+		(*env)->ThrowNew(env, cls, "sleepTime must not be 0");
+		return;
 	}
 	g_sleepTimer = sleepTime;
 }
 // #####################################################################################################################
-JNIEXPORT jboolean JNICALL Java_StackTrace_getStackTraceRunning(JNIEnv *env)
+JNIEXPORT jboolean JNICALL Java_StackTrace_getStackTraceRunning(JNIEnv *env, jobject obj)
 {
 	return g_stackTraceRunning;
 }
 
 // #####################################################################################################################
-JNIEXPORT jint JNICALL Java_StackTrace_getThreadCount(JNIEnv *env)
+JNIEXPORT jint JNICALL Java_StackTrace_getThreadCount(JNIEnv *env, jobject obj)
 {
 
 	jvmtiStackInfo *stack_info;
@@ -71,18 +72,18 @@ JNIEXPORT jint JNICALL Java_StackTrace_getThreadCount(JNIEnv *env)
 	check_jvmti_error(err, "Error while deallocating memory");
 	return thread_count;
 }
-// #####################################################################################################################
-JNIExport void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject b1)
 
+// #####################################################################################################################
+JNIEXPORT void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject obj, jobject b1)
 {
 	if(b1 == NULL)
 	{
 		jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
-		(*env)->ThrowNew(env, "Buffer must not be Null", cls)
-				return;
+		(*env)->ThrowNew(env, cls, "Buffer must not be Null");
+		return;
 	}
 	//setting the global buffer.
-	g_dataBuffer = (jbyte *) env->GetDirectBufferAddress(b1);
+	g_dataBuffer = (jbyte *) (*env)->GetDirectBufferAddress(env, b1);
 	g_dataReference = (*env)->NewGlobalRef(env, b1);
 	g_dataCapacity = (*env)->GetDirectBufferCapacity(env, b1);
 }
@@ -95,7 +96,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 {
 	//getting the ID field of the thread
 	jclass threadClass = (*env)->FindClass(env, "java/lang/Thread");
-	int tidFieldId = (*env)->GetFieldID(env, threadClass, "tid", "J");
+	jfieldID tidFieldId = (*env)->GetFieldID(env, threadClass, "tid", "J");
 
 	//current position of pointer
 	jlong currentPos = 0;
@@ -108,13 +109,13 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 	if(enterStatus != JNI_OK)
 	{
 		jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
-		(*env)->ThrowNew(env, "Error during Monitor Enter", cls)
-				return;
+		(*env)->ThrowNew(env, cls, "Error during Monitor Enter");
+		return;
 	}
 
 	while (g_stackTraceRunning)
 	{
-		sleep(g_sleepTimer);
+		Sleep(g_sleepTimer);
 		jvmtiStackInfo *stack_info;
 		jint thread_count;
 
@@ -156,20 +157,22 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 		break;
 	}
-	notifyAll(g_dataBuffer);
+	jclass refClass = (*env)->GetObjectClass(env, g_dataReference);
+	jmethodID notifyId=(*env)->GetMethodID(env, refClass, "notifyAll", "()V");
+	(*env)->CallVoidMethod(env, g_dataReference, notifyId);
 	jint exitStatus = (*env)->MonitorExit(env, g_dataReference);
 	if(exitStatus != JNI_OK)
 	{
 		jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
-		(*env)->ThrowNew(env, "Error during Monitor Exit", cls)
-				return;
+		(*env)->ThrowNew(env, cls, "Error during Monitor Exit");
+		return;
 	}
 
 }
 // #####################################################################################################################
 
 //starting stack trace
-JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env)
+JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env, jobject obj)
 {
 	// Check whether Thread already started g_stackTraceRunning
 	jclass threadClass = (*env)->FindClass(env, "java/lang/Thread");
@@ -195,7 +198,7 @@ JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env)
 }
 
 // #####################################################################################################################
-JNIEXPORT jobjectArray JNICALL Java_StackTrace_stopStackTrace(JNIEnv *env)
+JNIEXPORT jobjectArray JNICALL Java_StackTrace_stopStackTrace(JNIEnv *env, jobject obj)
 {
 	g_stackTraceRunning = false;
 }

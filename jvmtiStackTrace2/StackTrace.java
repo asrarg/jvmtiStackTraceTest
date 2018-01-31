@@ -1,6 +1,7 @@
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 
 public class StackTrace {
 
@@ -13,26 +14,30 @@ public class StackTrace {
 	public native String getCurrentThreadName(); //getting current thread name
 	public native int getThreadCount();
 
-	public native void setBuffers(ByteBuffer buff); //setting the buffers
-	static ByteBuffer jbuff;
+	public native void setBuffers(IntBuffer buff); //setting the buffers
+	
+	private IntBuffer intBuffer;
 
+	private int currentPosition;
 
 	//check if buffer has data in it (this is not correct! should be by the current position)
-	private static boolean hasData(ByteBuffer j){
-		if(j.position() == 0)
-		return (checks == 0);
+	private boolean hasData(){
+		return intBuffer.get(currentPosition)==0;
 	}
 
 	// ###############################################MAIN################################################################
 	public static void main(String[] args) throws Exception {
 		StackTrace jniObject = new StackTrace();
-
+		jniObject.run();
+	}
+	
+	public void run() throws Exception {
 		//printing name of current thread
-		System.out.println("Current thread name: " + jniObject.getCurrentThreadName());
+		System.out.println("Current thread name: " + getCurrentThreadName());
 
 		//printing top methods
 		System.out.println("Print Top Methods");
-		String[] methods = jniObject.getTopMethods();
+		String[] methods = getTopMethods();
 		if (methods != null) {
 			for (String m : methods) {
 				System.out.println("> " + m);
@@ -43,14 +48,14 @@ public class StackTrace {
 
 		//******************* BUFFERS AND THREADS *******************
 
-		jBuff = ByteBuffer.allocateDirect(10000);
-		jniObject.setBuffers(jBuff);
-		jniObject.startStackTrace()
+		intBuffer = ByteBuffer.allocateDirect(10000).asIntBuffer();
+		setBuffers(intBuffer);
+		startStackTrace();
 
 		// Get the current number of live threads
-		int threadCount = jniObject.getThreadCount();
+		int threadCount = getThreadCount();
 		/*Thread[] threads = new Thread[threadCount];
-		thread arr[] = jniObject.startStackTrace();//switch this to java
+		thread arr[] = startStackTrace();//switch this to java
 		for(int i=0; i<arr.length; i++)
 		{
 			//arr[i] = 
@@ -59,49 +64,25 @@ public class StackTrace {
 
 		//threads and synch
 		while(true){
-			synchronized (jBuff) {
-				if( !hasData(jBuff) ){ //true = empty, false = has data
-					jBuff.wait();
+			synchronized (intBuffer) {
+				if( !hasData() ){ //true = empty, false = has data
+					intBuffer.wait();
 				}
 			}
-			consume(jBuff)
+			consume();
+			break;
 		}
 		
 		//consume method
-		public void consume(ByteBuffer jBuff) throws InterruptedException
-		{
-			if ( !hasData(jBuff) ){
-				
-				return;
-			}
-			while(jBuff.hasRemaining())
-			{
-				//jBuff.position() + " -> " + jBuff.get();
-				jBuff.limit(jBuff.position());
-				int limit = jBuff.limit();
-				//check thread count and frame count for every thread so we can de code the buffer.
-				//still working on it
-				byte b = jBuff.get();
-				
-				
-			}
-		}
-
-
-
-
-
-
-
 	}
-
-
-
-
-
-
-
-
-
-
+	
+	public void consume() throws InterruptedException
+	{
+		if ( !hasData() ){
+			return;
+		}
+		for(int i=0; i<200;i++) {
+			System.out.printf("%d ", intBuffer.get(i));
+		}
+	}
 }
