@@ -49,6 +49,22 @@ JNIEXPORT void JNICALL Java_StackTrace_setSleepTime
 
 /*
  * Class:     StackTrace
+ * Method:    setValues
+ * Signature: (Ljava/lang/String;I)V
+ */
+JNIEXPORT void JNICALL Java_StackTrace_setValues
+  (JNIEnv *, jobject, jstring, jint);
+
+/*
+ * Class:     StackTrace
+ * Method:    setStackTraceRunning
+ * Signature: (Z)V
+ */
+JNIEXPORT void JNICALL Java_StackTrace_setStackTraceRunning
+  (JNIEnv *, jobject, jboolean);
+
+/*
+ * Class:     StackTrace
  * Method:    setBuffers
  * Signature: (Ljava/nio/IntBuffer;)V
  */

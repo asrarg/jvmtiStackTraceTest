@@ -57,6 +57,12 @@ JNIEXPORT jboolean JNICALL Java_StackTrace_getStackTraceRunning(JNIEnv *env, job
 }
 
 // #####################################################################################################################
+JNIEXPORT void JNICALL Java_StackTrace_setStackTraceRunning(JNIEnv *env, jobject obj, jboolean x)
+{
+	g_stackTraceRunning = x;
+}
+
+// #####################################################################################################################
 JNIEXPORT jint JNICALL Java_StackTrace_getThreadCount(JNIEnv *env, jobject obj)
 {
 
@@ -113,7 +119,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 	jlong currentPos = 0;
 
 
-	g_stackTraceRunning = TRUE;
+	//g_stackTraceRunning = TRUE;
 
 	//TODO extract the size to a local variable
 	const int sOfInt = sizeof(jint);

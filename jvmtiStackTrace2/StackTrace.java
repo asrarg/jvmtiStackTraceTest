@@ -19,7 +19,8 @@ public class StackTrace {
 	public native String getCurrentThreadName(); //getting current thread name
 	public native int getThreadCount();
 	public native void setSleepTime(int sTime);
-	public native void setValues(jobject x ,int y);
+	public native void setValues(String x ,int y);
+	public native void setStackTraceRunning(boolean x);
 
 	public native void setBuffers(IntBuffer buff); //setting the buffers
 	
@@ -68,6 +69,10 @@ public class StackTrace {
 	// ###############################################MAIN################################################################
 	
 	public void run() throws Exception {
+		
+		//setting the getting stakc trace to true
+		setStackTraceRunning(true);
+		
 		//printing name of current thread
 		System.out.println("Current thread name: " + getCurrentThreadName());
 
@@ -132,5 +137,8 @@ public class StackTrace {
 		for(int i=0; i<dataSize; i++) {
 			intBuffer.put(currentPosition++, 0);
 	    }
+		
+		
+		
 	}
 }
