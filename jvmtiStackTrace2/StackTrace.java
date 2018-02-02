@@ -1,7 +1,12 @@
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+
+import java.io.*;
+import java.text.*;
+import java.util.*;
 
 public class StackTrace {
 
@@ -9,10 +14,12 @@ public class StackTrace {
 	//public native void stackTraceSwitch(int x, boolean x); //switch fetching for stack traces on and off in addition to the sleep time
 
 	public native void startStackTrace(); //getting stack trace as a lineared byte buffer every x ms (y is for switching fetching for stacktrace on or off)
-	public native boolean detectBlackSwan(); //is there a black Swan event?
+	//public native boolean detectBlackSwan(); //is there a black Swan event?
 	public native String[] getTopMethods(); //getting top methods in stack trace
 	public native String getCurrentThreadName(); //getting current thread name
 	public native int getThreadCount();
+	public native void setSleepTime(int sTime);
+	public native void setValues(jobject x ,int y);
 
 	public native void setBuffers(IntBuffer buff); //setting the buffers
 	
@@ -22,7 +29,35 @@ public class StackTrace {
 
 	//check if buffer has data in it (this is not correct! should be by the current position)
 	private boolean hasData(){
-		return intBuffer.get(currentPosition)==0;
+		return intBuffer.get(currentPosition)!=0;
+	}
+	
+	// ###############################################MAIN################################################################
+	//methods to log in a file
+	protected static String defaultLogFile = "javaLogFile.txt";
+
+	public static void write(String s) {
+		write(defaultLogFile, s);
+	}
+
+	public static void write(String f, String s) {
+		TimeZone timezoneGermany = TimeZone.getTimeZone("CET");
+		Date now = new Date();
+		DateFormat dformat = new SimpleDateFormat ("yyyy.mm.dd hh:mm:ss ");
+		dformat.setTimeZone(timezoneGermany);
+		String currentTime = dformat.format(now);
+
+		try {
+			FileWriter aWriter = new FileWriter(f, true);
+			aWriter.write(currentTime + " " + s + "\n");
+			aWriter.flush();
+			aWriter.close();
+		}
+		catch (IOException ex) {
+			ex.printStackTrace();
+		}
+		System.out.println(currentTime + " " + s + "\n");
+		
 	}
 
 	// ###############################################MAIN################################################################
@@ -30,6 +65,7 @@ public class StackTrace {
 		StackTrace jniObject = new StackTrace();
 		jniObject.run();
 	}
+	// ###############################################MAIN################################################################
 	
 	public void run() throws Exception {
 		//printing name of current thread
@@ -45,44 +81,56 @@ public class StackTrace {
 		} else {
 			System.out.println("Got NULL from JNI.");
 		}
+		
+		
+		
 
 		//******************* BUFFERS AND THREADS *******************
 
-		intBuffer = ByteBuffer.allocateDirect(10000).asIntBuffer();
+		//setting sleep time
+		setSleepTime(2000);
+		
+		
+		ByteBuffer bb = ByteBuffer.allocateDirect(3_200);
+		bb.order(ByteOrder.nativeOrder());
+		intBuffer = bb.asIntBuffer();
 		setBuffers(intBuffer);
+		
 		startStackTrace();
 
 		// Get the current number of live threads
 		int threadCount = getThreadCount();
-		/*Thread[] threads = new Thread[threadCount];
-		thread arr[] = startStackTrace();//switch this to java
-		for(int i=0; i<arr.length; i++)
-		{
-			//arr[i] = 
-
-		}*/
+		
 
 		//threads and synch
 		while(true){
 			synchronized (intBuffer) {
 				if( !hasData() ){ //true = empty, false = has data
+					System.out.println("wait");
 					intBuffer.wait();
 				}
 			}
 			consume();
-			break;
 		}
 		
-		//consume method
 	}
 	
+	//consume method
 	public void consume() throws InterruptedException
 	{
 		if ( !hasData() ){
 			return;
 		}
-		for(int i=0; i<200;i++) {
-			System.out.printf("%d ", intBuffer.get(i));
+		for(int i=0; i<800;i++) {
+			System.out.printf("%08x ", intBuffer.get(i));
+			if ( i % 16 == 15 ) {
+				System.out.printf("%n");
+			}
 		}
+		System.out.printf("%n");
+		int dataSize = intBuffer.get(currentPosition+1)+2;
+		for(int i=0; i<dataSize; i++) {
+			intBuffer.put(currentPosition++, 0);
+	    }
 	}
 }

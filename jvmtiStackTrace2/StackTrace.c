@@ -16,7 +16,11 @@ static jobject g_dataReference = NULL;
 static jbyte *g_dataBuffer = NULL;
 static jlong g_dataCapacity;
 static bool g_stackTraceRunning;
-static int32_t g_sleepTimer;
+static int32_t g_sleepTimer;//=2000;
+
+
+//######################################################################################################################
+//create logging
 
 // #####################################################################################################################
 // Checking jvmtiErrors and print them out.
@@ -88,6 +92,13 @@ JNIEXPORT void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject obj, jobj
 	g_dataCapacity = (*env)->GetDirectBufferCapacity(env, b1);
 }
 
+// #####################################################################################################################
+JNIEXPORT void JNICALL Java_StackTrace_setValues(JNIEnv *env, jobject obj, jobject objValue, jint intValue)
+{
+	int xint = intValue;
+	jobject xobj = objValue;
+
+}
 
 
 // #####################################################################################################################
@@ -102,73 +113,127 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 	jlong currentPos = 0;
 
 
-	//TODO extract the size to a local variable
-	int sOfInt = sizeof(jint);
+	g_stackTraceRunning = TRUE;
 
-	jint enterStatus = (*env)->MonitorEnter(env, g_dataReference);
-	if(enterStatus != JNI_OK)
-	{
-		jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
-		(*env)->ThrowNew(env, cls, "Error during Monitor Enter");
-		return;
-	}
+	//TODO extract the size to a local variable
+	const int sOfInt = sizeof(jint);
+	const int32_t tagD=0x00006ad1;
+	const int32_t tagT=0xCafeBabe;
+	const int32_t tagF=0xDeadBeef;
+
 
 	while (g_stackTraceRunning)
 	{
+		fprintf(stderr, "Sleep Timer: %ld\n", g_sleepTimer);
 		Sleep(g_sleepTimer);
+
 		jvmtiStackInfo *stack_info;
 		jint thread_count;
 
 		jvmtiError err;
-		err = (*jvmti)->GetAllStackTraces(jvmti, 1, &stack_info, &thread_count);
+		err = (*jvmti)->GetAllStackTraces(jvmti, 15, &stack_info, &thread_count);
 		if (err != JVMTI_ERROR_NONE) {
 			check_jvmti_error(err, "Error while getting thread infos");
 			continue;
 		}
-		jlong currentOffset = sizeof(int32_t);
+
+		// Number of int values following the initial state and size value
+		int32_t data_size = 1;
+
+
 		for (int i = 0; i < thread_count; i++) {
-			// extracting some variables
+			//extracting some variables
+			jvmtiStackInfo *infop = &stack_info[i];
+			data_size += 3 + 3*infop->frame_count;
+		} //end of threads loop
+
+
+		jlong currentOffset = currentPos + sizeof(int32_t);
+		//adding total data size to the beginning (2nd slot) of buffer
+		memcpy(&g_dataBuffer[currentOffset], &data_size, sOfInt);
+		currentOffset += sOfInt;
+		//adding total thread count to the beginning (2nd slot) of buffer
+		memcpy(&g_dataBuffer[currentOffset], &thread_count, sOfInt);
+		currentOffset += sOfInt;
+
+		for (int i = 0; i < thread_count; i++) {
+			//extracting some variables
 			jvmtiStackInfo *infop = &stack_info[i];
 			jthread thread = infop->thread;
 			jint tid = (*env)->GetLongField(env, thread, tidFieldId);
 			jint state = infop->state;
 			jint frame_count = infop->frame_count;
 			jvmtiFrameInfo *frames = infop->frame_buffer;
+
+
+			//thread info
 			memcpy(&g_dataBuffer[currentOffset], &tid, sOfInt);
 			currentOffset += sOfInt;
 			memcpy(&g_dataBuffer[currentOffset], &state, sOfInt);
 			currentOffset += sOfInt;
 			memcpy(&g_dataBuffer[currentOffset], &frame_count, sOfInt);
 			currentOffset += sOfInt;
-
-			int elementsSize = frame_count*2*sizeof(int32_t); //each frame has 2 elements (method and location)
+			 //each frame has 2 elements (method and location)
 			for(int j=0; j<frame_count;j++)
 			{
+				memcpy(&g_dataBuffer[currentOffset], &tagF, sOfInt);
+				currentOffset += sOfInt;
 				memcpy(&g_dataBuffer[currentOffset], &frames[j].method, sOfInt);
 				currentOffset += sOfInt;
-				memcpy(&g_dataBuffer[currentOffset], &frames[j].location, sOfInt); // are we needing this at all??
+				memcpy(&g_dataBuffer[currentOffset], &frames[j].location, sOfInt); // what is it for?
 				currentOffset += sOfInt;
 			} //end of frames loop
+
+
 		} //end of threads loop
 
+
+		/*int32_t *dataAlias = (int *)g_dataBuffer;
+		for(int i=0; i<200;i++) {
+			printf("%08x ", dataAlias[i]);
+			if ( i % 8 == 7 ) {
+				printf("\n");
+			}
+		}
+		printf("x\n");*/
+		//here it works
+
+
+		//adding state of buffer to the beginning (1st slot) of buffer
+		memcpy(&g_dataBuffer[currentPos], &tagD, sOfInt);
+
+
+		/*for(int i=0; i<200;i++) {
+			printf("%08x ", dataAlias[i]);
+			if ( i % 8 == 7 ) {
+				printf("\n");
+			}
+		}
+		printf("0\n\n");*/
 		err = (*jvmti)->Deallocate(jvmti, (unsigned char *)stack_info);
 		check_jvmti_error(err, "Error while deallocating memory");
+
+		jint enterStatus = (*env)->MonitorEnter(env, g_dataReference);
+		if(enterStatus != JNI_OK)
+		{
+			printf("Error: Monitor Enter\n");
+			return;
+		}
+
 		currentPos = currentOffset;
-
-		break;
+		jclass refClass = (*env)->GetObjectClass(env, g_dataReference);
+		jmethodID notifyId=(*env)->GetMethodID(env, refClass, "notifyAll", "()V");
+		(*env)->CallVoidMethod(env, g_dataReference, notifyId);
+		jint exitStatus = (*env)->MonitorExit(env, g_dataReference);
+		(*env)->DeleteLocalRef(env, refClass);
+		if(exitStatus != JNI_OK)
+		{
+			printf("Error: Monitor Exit\n");
+			return;
+		}
 	}
-	jclass refClass = (*env)->GetObjectClass(env, g_dataReference);
-	jmethodID notifyId=(*env)->GetMethodID(env, refClass, "notifyAll", "()V");
-	(*env)->CallVoidMethod(env, g_dataReference, notifyId);
-	jint exitStatus = (*env)->MonitorExit(env, g_dataReference);
-	if(exitStatus != JNI_OK)
-	{
-		jclass cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
-		(*env)->ThrowNew(env, cls, "Error during Monitor Exit");
-		return;
-	}
-
 }
+
 // #####################################################################################################################
 
 //starting stack trace
@@ -176,8 +241,10 @@ JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env, jobject obj)
 {
 	// Check whether Thread already started g_stackTraceRunning
 	jclass threadClass = (*env)->FindClass(env, "java/lang/Thread");
-	if (threadClass == NULL)
+
+	if (threadClass == NULL) {
 		printf("jclass error.");
+	}
 
 	jmethodID methodID = (*env)->GetMethodID(env, threadClass, "<init>", "()V"); // -> problem!
 	if (methodID == NULL)
@@ -189,10 +256,11 @@ JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env, jobject obj)
 
 	// Set Daemon Thread //TODO check differecne between daemon and agent thread
 
-
+// like thread.start() for native thread
 	jvmtiError error = (*jvmti)->RunAgentThread(jvmti, threadObj, getStackTrace, NULL, JVMTI_THREAD_MAX_PRIORITY);
 
 	check_jvmti_error(error, "Could not start thread");
+	printf("Agent Thread started\n");
 	return;
 
 }
@@ -331,7 +399,7 @@ JNIEXPORT jobjectArray JNICALL Java_StackTrace_getTopMethods(JNIEnv *env, jobjec
 
 		/* this one Deallocate call frees all data allocated by GetAllStackTraces */
 		err = (*jvmti)->Deallocate(jvmti, (unsigned char *)stack_info);
-		check_jvmti_error(err, "Error while dealocating memory");
+		check_jvmti_error(err, "Error while deallocating memory");
 	}
 
 	return myArray;
@@ -344,7 +412,7 @@ JNIEXPORT jobjectArray JNICALL Java_StackTrace_getTopMethods(JNIEnv *env, jobjec
 // The method which is executed when the agent is initialized (e.g. agent library loaded)
 //
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved) {
-	printf("NATIVE: Agent was loaded!\n");
+	printf("\nNATIVE: Agent was loaded!\n");
 
 	// load JVMTI interface and set it to a global variable in order each method can use it
 	jvmtiError error;

@@ -17,14 +17,6 @@ JNIEXPORT void JNICALL Java_StackTrace_startStackTrace
 
 /*
  * Class:     StackTrace
- * Method:    detectBlackSwan
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL Java_StackTrace_detectBlackSwan
-  (JNIEnv *, jobject);
-
-/*
- * Class:     StackTrace
  * Method:    getTopMethods
  * Signature: ()[Ljava/lang/String;
  */
@@ -46,6 +38,14 @@ JNIEXPORT jstring JNICALL Java_StackTrace_getCurrentThreadName
  */
 JNIEXPORT jint JNICALL Java_StackTrace_getThreadCount
   (JNIEnv *, jobject);
+
+/*
+ * Class:     StackTrace
+ * Method:    setSleepTime
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_StackTrace_setSleepTime
+  (JNIEnv *, jobject, jint);
 
 /*
  * Class:     StackTrace
