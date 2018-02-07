@@ -3,6 +3,8 @@ import java.lang.management.ThreadMXBean;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 
 import java.io.*;
 import java.text.*;
@@ -12,7 +14,9 @@ public class StackTrace {
 
 	//public native void setSTSleepTime(int x); //setting the sleep time for stack trace (how often to get ST)
 	//public native void stackTraceSwitch(int x, boolean x); //switch fetching for stack traces on and off in addition to the sleep time
-
+	public final static int bbuffer_size = 3_200;
+	public final static int ibuffer_size = bbuffer_size / 4;
+	
 	public native void startStackTrace(); //getting stack trace as a lineared byte buffer every x ms (y is for switching fetching for stacktrace on or off)
 	//public native boolean detectBlackSwan(); //is there a black Swan event?
 	public native String[] getTopMethods(); //getting top methods in stack trace
@@ -21,51 +25,27 @@ public class StackTrace {
 	public native void setSleepTime(int sTime);
 	public native void setValues(String x ,int y);
 	public native void setStackTraceRunning(boolean x);
+	public native String getMethodName(long methodID);
 
 	public native void setBuffers(IntBuffer buff); //setting the buffers
 	
 	private IntBuffer intBuffer;
 
-	private int currentPosition;
+	private int currentPosition = 0;
 
 	//check if buffer has data in it (this is not correct! should be by the current position)
 	private boolean hasData(){
 		return intBuffer.get(currentPosition)!=0;
 	}
 	
-	// ###############################################MAIN################################################################
-	//methods to log in a file
-	protected static String defaultLogFile = "javaLogFile.txt";
-
-	public static void write(String s) {
-		write(defaultLogFile, s);
-	}
-
-	public static void write(String f, String s) {
-		TimeZone timezoneGermany = TimeZone.getTimeZone("CET");
-		Date now = new Date();
-		DateFormat dformat = new SimpleDateFormat ("yyyy.mm.dd hh:mm:ss ");
-		dformat.setTimeZone(timezoneGermany);
-		String currentTime = dformat.format(now);
-
-		try {
-			FileWriter aWriter = new FileWriter(f, true);
-			aWriter.write(currentTime + " " + s + "\n");
-			aWriter.flush();
-			aWriter.close();
-		}
-		catch (IOException ex) {
-			ex.printStackTrace();
-		}
-		System.out.println(currentTime + " " + s + "\n");
-		
-	}
 
 	// ###############################################MAIN################################################################
 	public static void main(String[] args) throws Exception {
 		StackTrace jniObject = new StackTrace();
 		jniObject.run();
 	}
+	
+	
 	// ###############################################MAIN################################################################
 	
 	public void run() throws Exception {
@@ -96,7 +76,7 @@ public class StackTrace {
 		setSleepTime(2000);
 		
 		
-		ByteBuffer bb = ByteBuffer.allocateDirect(3_200);
+		ByteBuffer bb = ByteBuffer.allocateDirect(bbuffer_size);
 		bb.order(ByteOrder.nativeOrder());
 		intBuffer = bb.asIntBuffer();
 		setBuffers(intBuffer);
@@ -104,7 +84,8 @@ public class StackTrace {
 		startStackTrace();
 
 		// Get the current number of live threads
-		int threadCount = getThreadCount();
+		//int threadCount = getThreadCount();
+
 		
 
 		//threads and synch
@@ -116,6 +97,7 @@ public class StackTrace {
 				}
 			}
 			consume();
+			
 		}
 		
 	}
@@ -126,19 +108,48 @@ public class StackTrace {
 		if ( !hasData() ){
 			return;
 		}
-		for(int i=0; i<800;i++) {
+		//change this loop to another method 
+		/*
+		for(int i=0; i<ibuffer_size;i++) {
 			System.out.printf("%08x ", intBuffer.get(i));
 			if ( i % 16 == 15 ) {
 				System.out.printf("%n");
 			}
-		}
+		}*/
 		System.out.printf("%n");
-		int dataSize = intBuffer.get(currentPosition+1)+2;
-		for(int i=0; i<dataSize; i++) {
-			intBuffer.put(currentPosition++, 0);
-	    }
-		
-		
-		
+		//print here what u get n buffer
+		//u should see what data current position here has
+		int start = currentPosition;
+		int tagS = intBuffer.get(currentPosition++);
+		int data_size = intBuffer.get(currentPosition++);
+		int thread_count = intBuffer.get(currentPosition++);
+		System.out.printf("Stack Trace: %d %d %d %n", tagS, data_size, thread_count);
+
+		for(int thread = 0; thread<thread_count; thread++) {
+			int tid = intBuffer.get(currentPosition++);
+			int state = intBuffer.get(currentPosition++);
+			int frame_count = intBuffer.get(currentPosition++);
+			System.out.printf("Thread Trace: %d %d %d %n", tid, state, frame_count);
+			for (int frame = 0; frame<frame_count; frame++) {
+				int tagF = intBuffer.get(currentPosition++);
+				
+				int methId = intBuffer.get(currentPosition++);
+				
+				String methdName = getMethodName(methId);
+				
+				int location = intBuffer.get(currentPosition++);
+				
+				System.out.printf("Frame Trace: %d %d %d %n", tagF, methdName, location);
+			}
+		}
+
+		while ( start != currentPosition ) {
+			intBuffer.put(start, 0);
+			start = ( start+1 ) % ibuffer_size;
+		}
+
+
 	}
+
+	
 }

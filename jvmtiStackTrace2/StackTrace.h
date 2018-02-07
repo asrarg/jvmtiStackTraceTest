@@ -7,6 +7,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef StackTrace_bbuffer_size
+#define StackTrace_bbuffer_size 3200L
+#undef StackTrace_ibuffer_size
+#define StackTrace_ibuffer_size 800L
 /*
  * Class:     StackTrace
  * Method:    startStackTrace
@@ -62,6 +66,14 @@ JNIEXPORT void JNICALL Java_StackTrace_setValues
  */
 JNIEXPORT void JNICALL Java_StackTrace_setStackTraceRunning
   (JNIEnv *, jobject, jboolean);
+
+/*
+ * Class:     StackTrace
+ * Method:    getMethodName
+ * Signature: (J)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_StackTrace_getMethodName
+  (JNIEnv *, jobject, jlong);
 
 /*
  * Class:     StackTrace
