@@ -25,30 +25,45 @@ jmethodID g_idCache[ID_CACHE_SIZE];
 
 #define INC currentOffset = (currentOffset + sOfInt) % (g_dataCapacity/4)
 
+//######################################################################################################################
+jmethodID getMethodId(int index)
+{
+    if ( index<0 || index >= ID_CACHE_SIZE ) {
+        return NULL;
+    }
+    return g_idCache[index];
+}
 
 //######################################################################################################################
-/*
-static void addMethodId(jmethodID methId)
-
+int addMethodId(jmethodID methId)
 {
-	jint methIndex = ( (jlong)methId ) * 17 % ID_CACHE_SIZE;
-	jobjectArray myArray = NULL// creating array
-	myArray = (*env)->NewObjectArray(env, thread_count, (*env)->FindClass(env,"java/lang/String"), 0);
-
-}*/
-
+	int64_t location = ((int64_t)methId) * 17 % ID_CACHE_SIZE;
+    int round = 0;
+    while( g_idCache[location] != 0 && g_idCache[location] != methId) {
+        location = (location+1) % ID_CACHE_SIZE;
+        if ( round++ >= ID_CACHE_SIZE ) {
+            return -1;
+        }
+    }
+    g_idCache[location] = methId;
+    return location;
+}
 
 // #####################################################################################################################
-JNIEXPORT jstring JNICALL Java_StackTrace_getMethodName(JNIEnv *env, jobject obj, jlong methodID)
+jstring getMethodName(JNIEnv *env, jint methodIdx)
 {
 	jvmtiError err;
 
 	// getting the method name based on the method id of the frame
-	int methidconv = addMethodId(methodID);
-	char *methodName;
+	jmethodID methodID = getMethodId(methodIdx);
+	if (methodID == NULL ) {
+		return NULL;
+	}
+	char *methodName=NULL;
 	err = (*jvmti)->GetMethodName(jvmti, (jmethodID) methodID, &methodName, NULL, NULL);
-	jstring methodnameAsString = (*env)->NewStringUTF(env, methodName);
-	return methodnameAsString;
+	jstring result = (*env)->NewStringUTF(env, methodName);
+	(*jvmti)->Deallocate(jvmti, methodName);
+	return result;
 }
 
 // #####################################################################################################################
@@ -126,6 +141,7 @@ JNIEXPORT void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject obj, jobj
 	g_dataBuffer = (jbyte *) (*env)->GetDirectBufferAddress(env, b1);
 	g_dataReference = (*env)->NewGlobalRef(env, b1);
 	g_dataCapacity = (*env)->GetDirectBufferCapacity(env, b1);
+	fprintf(stderr, "%d %d\n", g_dataBuffer, g_dataCapacity);
 }
 
 // #####################################################################################################################
@@ -135,8 +151,6 @@ JNIEXPORT void JNICALL Java_StackTrace_setValues(JNIEnv *env, jobject obj, jobje
 	jobject xobj = objValue;
 
 }
-
-
 
 // #####################################################################################################################
 //getting stack trace in a buffer and linearizing the buffer
@@ -178,7 +192,6 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 		// Number of int values following the initial state and size value
 		int32_t data_size = 1;
 
-
 		for (int i = 0; i < thread_count; i++) {
 			//extracting some variables
 			jvmtiStackInfo *infop = &stack_info[i];
@@ -186,13 +199,16 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 		} //end of threads loop
 
 
-		jlong currentOffset = currentPos + sizeof(int32_t);
+		jlong currentOffset = currentPos + sOfInt;
+		fprintf(stderr,"%d %d\n", g_dataBuffer, currentOffset);
 		//adding total data size to the beginning (2nd slot) of buffer
 		memcpy(&g_dataBuffer[currentOffset], &data_size, sOfInt);
-		currentOffset += sOfInt; //INC; //currentOffset += sOfInt;
+		currentOffset += sOfInt;
+		//currentOffset %= (g_dataCapacity/4);
 		//adding total thread count to the beginning (2nd slot) of buffer
 		memcpy(&g_dataBuffer[currentOffset], &thread_count, sOfInt);
 		currentOffset += sOfInt;//INC;
+		//currentOffset %= (g_dataCapacity/4);
 
 		for (int i = 0; i < thread_count; i++) {
 			//extracting some variables
@@ -206,35 +222,45 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 			//thread info
 			memcpy(&g_dataBuffer[currentOffset], &tid, sOfInt);
-			currentOffset += sOfInt;//INC;
+			currentOffset += sOfInt;
+			//currentOffset %= (g_dataCapacity/4);
 			memcpy(&g_dataBuffer[currentOffset], &state, sOfInt);
 			currentOffset += sOfInt;//INC;
+			//currentOffset %= (g_dataCapacity/4);
 			memcpy(&g_dataBuffer[currentOffset], &frame_count, sOfInt);
 			currentOffset += sOfInt;//INC;
+			//currentOffset %= (g_dataCapacity/4);
 			 //each frame has 2 elements (method and location)
 			for(int j=0; j<frame_count;j++)
 			{
 				memcpy(&g_dataBuffer[currentOffset], &tagF, sOfInt);
 				currentOffset += sOfInt;//INC;
-				memcpy(&g_dataBuffer[currentOffset], &frames[j].method, sOfInt);
+				////currentOffset %= (g_dataCapacity/4);
+
+				jint methIdx = addMethodId(frames[j].method);
+				memcpy(&g_dataBuffer[currentOffset],&methIdx, sOfInt);
+				currentOffset += sOfInt;
+				//currentOffset %= (g_dataCapacity/4);
+
+				memcpy(&g_dataBuffer[currentOffset], &frames[j].location, sOfInt); // it is the bytecode location
 				currentOffset += sOfInt;//INC;
-				memcpy(&g_dataBuffer[currentOffset], &frames[j].location, sOfInt); // what is it for? it is the bytecode location
-				currentOffset += sOfInt;//INC;
+				//currentOffset %= (g_dataCapacity/4);
 			} //end of frames loop
 
 
 		} //end of threads loop
 
+		/*
 		//just printing data********************************
-		/*int32_t *dataAlias = (int *)g_dataBuffer;
+		int32_t *dataAlias = (int *)g_dataBuffer;
 		for(int i=0; i<200;i++) {
-			printf("%08x ", dataAlias[i]);
+			fprintf(stderr, "%08x ", dataAlias[i]);
 			if ( i % 8 == 7 ) {
-				printf("\n");
+				fprintf(stderr, "\n");
 			}
 		}
-		printf("x\n");*/
-		//**************************************************
+		printf("x\n");
+		//**************************************************		 */
 
 		//adding state of buffer to the beginning (1st slot) of buffer
 		memcpy(&g_dataBuffer[currentPos], &tagD, sOfInt);

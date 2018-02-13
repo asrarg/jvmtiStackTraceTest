@@ -69,14 +69,6 @@ JNIEXPORT void JNICALL Java_StackTrace_setStackTraceRunning
 
 /*
  * Class:     StackTrace
- * Method:    getMethodName
- * Signature: (J)Ljava/lang/String;
- */
-JNIEXPORT jstring JNICALL Java_StackTrace_getMethodName
-  (JNIEnv *, jobject, jlong);
-
-/*
- * Class:     StackTrace
  * Method:    setBuffers
  * Signature: (Ljava/nio/IntBuffer;)V
  */
