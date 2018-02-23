@@ -37,14 +37,6 @@ JNIEXPORT jstring JNICALL Java_StackTrace_getCurrentThreadName
 
 /*
  * Class:     StackTrace
- * Method:    getThreadCount
- * Signature: ()I
- */
-JNIEXPORT jint JNICALL Java_StackTrace_getThreadCount
-  (JNIEnv *, jobject);
-
-/*
- * Class:     StackTrace
  * Method:    setSleepTime
  * Signature: (I)V
  */
@@ -53,19 +45,27 @@ JNIEXPORT void JNICALL Java_StackTrace_setSleepTime
 
 /*
  * Class:     StackTrace
- * Method:    setValues
- * Signature: (Ljava/lang/String;I)V
- */
-JNIEXPORT void JNICALL Java_StackTrace_setValues
-  (JNIEnv *, jobject, jstring, jint);
-
-/*
- * Class:     StackTrace
  * Method:    setStackTraceRunning
  * Signature: (Z)V
  */
 JNIEXPORT void JNICALL Java_StackTrace_setStackTraceRunning
   (JNIEnv *, jobject, jboolean);
+
+/*
+ * Class:     StackTrace
+ * Method:    setThreadList
+ * Signature: ([Ljava/lang/Thread;)V
+ */
+JNIEXPORT void JNICALL Java_StackTrace_setThreadList
+  (JNIEnv *, jobject, jobjectArray);
+
+/*
+ * Class:     StackTrace
+ * Method:    getMethodName
+ * Signature: (I)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_StackTrace_getMethodName
+  (JNIEnv *, jobject, jint);
 
 /*
  * Class:     StackTrace
