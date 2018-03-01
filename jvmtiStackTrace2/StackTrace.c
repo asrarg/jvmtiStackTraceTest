@@ -30,7 +30,6 @@ jmethodID g_idCache[ID_CACHE_SIZE];
 #define SET_CURRENT_OFFSET(O, L) \
   do {\
       O = (O + 1) % (L);\
-      /*fprintf(stderr, "%d: %d %d %d\n", __LINE__, O, S, L);*/\
   } while ( 0 )
 //######################################################################################################################
 JNIEXPORT void JNICALL Java_StackTrace_setThreadList (JNIEnv *env, jobject obj, jobjectArray threadList)
@@ -61,6 +60,7 @@ JNIEXPORT void JNICALL Java_StackTrace_setThreadList (JNIEnv *env, jobject obj, 
 //######################################################################################################################
 jmethodID getMethodId(int index)
 {
+	//this method returns the method ID at the specified location in the global cache
     if ( index<0 || index >= ID_CACHE_SIZE )
     {
         return NULL;
@@ -71,6 +71,7 @@ jmethodID getMethodId(int index)
 //######################################################################################################################
 int addMethodId(jmethodID methId)
 {
+	//this method stores the passed methodID in the global cache, it checks if it is already in the cache, it adds it and returns the location
 	int64_t location = ((int64_t)methId) * 17 % ID_CACHE_SIZE;
     int round = 0;
     while( g_idCache[location] != 0 && g_idCache[location] != methId)
@@ -91,11 +92,13 @@ JNIEXPORT jstring JNICALL Java_StackTrace_getMethodName (JNIEnv *env, jobject ob
     jvmtiError err;
 
     // getting the method name based on the method id of the frame
+    //getting the method ID from the global cache
     jmethodID methodID = getMethodId(intValue);
     if (methodID == NULL )
     {
         return NULL;
     }
+    //then getting the name of the method using the id
     char *methodName=NULL;
     err = (*jvmti)->GetMethodName(jvmti, (jmethodID) methodID, &methodName, NULL, NULL);
     jstring result = (*env)->NewStringUTF(env, methodName);

@@ -126,7 +126,7 @@ public class StackTrace {
 		
 		//collecting all method Ids in list to calculate most frequent methods
 		//do calculation once every 2 stack traces (something like every 1 minute or so)
-		List<Integer> methodsList = new ArrayList<Integer>();
+		List<Integer> methodsList = new ArrayList<Integer>(); // consider hash map
 		
 		 for(int thread = 0; thread<thread_count; thread++)
 		 {
