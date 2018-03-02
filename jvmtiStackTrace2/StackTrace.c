@@ -1,5 +1,9 @@
+#ifdef WINDOWS
 #include <windows.h>
 #include <winbase.h>
+#else
+#include <unistd.h>
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include<stdio.h>
@@ -25,7 +29,7 @@ static jthread *g_threadList;
 //cache structure , define it, it contains all method ids and send
 #define ID_CACHE_SIZE 65537
 
-jmethodID g_idCache[ID_CACHE_SIZE];
+static jmethodID g_idCache[ID_CACHE_SIZE];
 
 #define SET_CURRENT_OFFSET(O, L) \
   do {\
@@ -185,7 +189,7 @@ JNIEXPORT void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject obj, jobj
     g_dataBuffer = (jint *) (*env)->GetDirectBufferAddress(env, b1);
     g_dataReference = (*env)->NewGlobalRef(env, b1);
     g_dataCapacity = (*env)->GetDirectBufferCapacity(env, b1);
-    fprintf(stderr, "Buffer initially: %d %d\n", g_dataBuffer, g_dataCapacity);
+    fprintf(stderr, "Buffer initially: %p %ld\n", g_dataBuffer, g_dataCapacity);
 }
 
 
@@ -206,7 +210,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 	while (g_stackTraceRunning)
 	{
-		fprintf(stderr, "Sleep Timer: %ld\n", g_sleepTimer);
+		fprintf(stderr, "Sleep Timer: %d\n", g_sleepTimer);
 #ifdef WINDOWS
 		Sleep(g_sleepTimer);
 #else
@@ -248,9 +252,9 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 
 		jlong currentOffset = currentPos + 1;
-		fprintf(stderr, "Buffer later: %d %d\n", g_dataBuffer, g_dataCapacity);
+		fprintf(stderr, "Buffer later: %p %ld\n", g_dataBuffer, g_dataCapacity);
 		//adding total data size to the beginning (2nd slot) of buffer
-		fprintf(stderr, "Memcpy: %d %d %d\n", &g_dataBuffer[currentOffset], &data_size);
+		fprintf(stderr, "Memcpy: %p %p\n", &g_dataBuffer[currentOffset], &data_size);
 		memcpy(&g_dataBuffer[currentOffset], &data_size, sizeof(jint));
 		SET_CURRENT_OFFSET(currentOffset, g_dataCapacity);
 		//adding total thread count to the beginning (2nd slot) of buffer

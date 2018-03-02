@@ -5,10 +5,26 @@
 ifeq ($(shell uname), Linux)
   SYSINC=linux
   DEFINES=-DLINUX
+  CURRENT="/home/ubuntubase/agd/jvmtiStackTraceTest/jvmtiStackTrace2"
+  JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+  JAVA=java
+  JAVAC=javac
+  JAVAH=javah
+  GCC=gcc
+  OPTIONS= -shared -fPIC
+  TARGET=StackTrace.so
 else 
   ifeq ($(shell uname), CYGWIN_NT-10.0)
     SYSINC=win32
     DEFINES=-DWINDOWS
+    CURRENT="C:/Users/agd/jvmtiStackTraceTest/jvmtiStackTrace2"
+    JAVA_HOME=C:/Program Files/Java/jdk1.8.0_144
+    JAVA=$(JAVA_HOME)/bin/java.exe
+    JAVAC=$(JAVA_HOME)/bin/javac.exe
+    JAVAH=$(JAVA_HOME)/bin/javah.exe
+    GCC=C:/cygwin64/bin/x86_64-w64-mingw32-gcc-6.4.0.exe
+    OPTIONS=-m64 -Wl,--add-stdcall-alias -shared
+  TARGET=StackTrace.dll
   else
     echo "Unsupported operating system"
   endif
@@ -17,13 +33,6 @@ endif
 
 CLASS_PATH = .
 
-CURRENT="C:/Users/agd/jvmtiStackTraceTest/jvmtiStackTrace2"
-JAVA_HOME=C:/Program Files/Java/jdk1.8.0_144
-JAVA=$(JAVA_HOME)/bin/java.exe
-JAVAC=$(JAVA_HOME)/bin/javac.exe
-JAVAH=$(JAVA_HOME)/bin/javah.exe
-GCC=C:/cygwin64/bin/x86_64-w64-mingw32-gcc-6.4.0.exe
-OPTIONS=-Wl,--add-stdcall-alias
 
 # Define a virtual path for .class in the bin directory
 vpath %.class $(CLASS_PATH)
@@ -31,12 +40,12 @@ vpath %.class $(CLASS_PATH)
 all : clean test
 
 # $@ matches the target, $< matches the first dependancy
-StackTrace.dll : StackTrace.o
-	"$(GCC)" -m64  -shared -o $@ $<
+$(TARGET) : StackTrace.o
+	"$(GCC)" -m64  $(OPTIONS) -o $@ $<
 
 # $@ matches the target, $< matches the first dependancy
 StackTrace.o : StackTrace.c StackTrace.h
-	"$(GCC)" -m64 -I"$(JAVA_HOME)/include" -I"$(JAVA_HOME)/include/$(SYSINC)" -D__int64="long long" $(DEFINES) -c $< -o $@
+	"$(GCC)" $(OPTIONS) -I"$(JAVA_HOME)/include" -I"$(JAVA_HOME)/include/$(SYSINC)" -D__int64="long long" $(DEFINES) -c $< -o $@
 
 # $* matches the target filename without the extension
 StackTrace.h : StackTrace.class
@@ -46,7 +55,7 @@ StackTrace.class: StackTrace.java
 	"$(JAVAC)" -d . StackTrace.java
 	
 clean :
-	rm -f StackTrace.h StackTrace.o StackTrace.dll StackTrace.class
+	rm -f StackTrace.h StackTrace.o $(TARGET) StackTrace.class
 	
-test: StackTrace.dll StackTrace.class
-	"$(JAVA)" -agentpath:"$(CURRENT)/StackTrace.dll" -classpath . StackTrace
+test: $(TARGET) StackTrace.class
+	"$(JAVA)" -agentpath:"$(CURRENT)/$(TARGET)" -classpath . StackTrace
