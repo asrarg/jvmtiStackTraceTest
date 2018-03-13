@@ -9,6 +9,7 @@ import java.nio.charset.Charset;
 import java.io.*;
 import java.text.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
@@ -21,6 +22,7 @@ public class StackTrace {
 
 	public final static int bbuffer_size = 3_200;
 	public final static int ibuffer_size = bbuffer_size / 4;
+	public List<Integer> methodsList = new ArrayList<Integer>();
 	
 	//getting stack trace as a lineared byte buffer every x ms (y is for switching fetching for stacktrace on or off)
 	public native void startStackTrace();
@@ -80,6 +82,41 @@ public class StackTrace {
 		//setting sleep time
 		setSleepTime(2000);
 		
+		showAllThreads();
+		
+		//asking user for threads list
+		Scanner scanner = new Scanner(System.in);
+		System.out.print("Enter threads IDs seperated by commas: ");
+		String threadsString = scanner.nextLine();
+		List<String> threadsListString = Arrays.asList(threadsString.split("\\s*,\\s*"));
+
+		//converting list string to long
+		List<Long> threadsListLong = new ArrayList<Long>(threadsListString.size());
+		for(String current:threadsListString){
+			threadsListLong.add(Long.parseLong(current));
+		}
+		
+		int numberOfThreads = threadsListString.size();
+		Thread threadsList[] = new Thread[numberOfThreads];
+		
+		
+		//getting threads by ID
+		for(Long currentThreadID:threadsListLong){
+			int i=0;
+			Thread threadTemp = getThread(currentThreadID);
+			if(threadTemp != null)
+			{
+				threadsList[i] = threadTemp;
+				System.out.println("adding to list thread with ID: " + threadsList[i].getId() );
+				i++;
+			}
+		}
+		
+		//setting threads list
+		int threadslistlen = threadsList.length;
+		System.out.println("Threads List LENGTH: " + threadslistlen);
+		setThreadList(threadsList);
+		
 		
 		ByteBuffer bb = ByteBuffer.allocateDirect(bbuffer_size);
 		bb.order(ByteOrder.nativeOrder());
@@ -87,7 +124,9 @@ public class StackTrace {
 		setBuffers(intBuffer);
 		
 		startStackTrace();
-
+		
+		//special thread for showTopMethods
+		new Thread(()->{showTopMethods();}).start();//runnable and in separate class, search for "schedualed executer service"
 
 		//threads and synch
 		while(true)
@@ -101,9 +140,7 @@ public class StackTrace {
 				}
 			}
 			consume();
-			
 		}
-		
 	}
 	// ###############################################MAIN################################################################
 	//consume method
@@ -126,7 +163,11 @@ public class StackTrace {
 		
 		//collecting all method Ids in list to calculate most frequent methods
 		//do calculation once every 2 stack traces (something like every 1 minute or so)
-		List<Integer> methodsList = new ArrayList<Integer>(); // consider hash map
+		
+        
+        
+        //List<Integer> methodsList = new ArrayList<Integer>(); // consider hash map
+		//HashMap<Integer, String> methodIDsNames = new HashMap<Integer, String>();
 		
 		 for(int thread = 0; thread<thread_count; thread++)
 		 {
@@ -145,16 +186,18 @@ public class StackTrace {
 	            	int methId = intBuffer.get(currentPosition++);
 	            	currentPosition %= ibuffer_size;
 
-            		methodsList.add(methId);
+	    			synchronized(methodsList) {
+	    				methodsList.add(methId);
+	    			}
+	    			String methodName = getMethodName(methId);
+            		//methodIDsNames.put(methId, methodName);
 
 	            	int location = intBuffer.get(currentPosition++);
 	            	currentPosition %= ibuffer_size;
 
-	            	System.out.printf("Frame Trace: %s %d %n", getMethodName(methId), location);
-	            }
-		 }
+	            	System.out.printf("Frame Trace: %s %d %n", methodName, location);
+	            }		 }
 
-		 showTopMethods(methodsList);
 
 		 System.out.printf("Cleanup: %d %d %d%n", start, currentPosition, ibuffer_size);
 
@@ -164,19 +207,88 @@ public class StackTrace {
 			 intBuffer.put(start, 0);
 			 start = ( start+1 ) % ibuffer_size;
 		 }
+		 
+		 //showTopMethods(methodsList);
+
 		 System.out.println();
 	}
 
 	
 	// ###################################################################################################################
-	public void showTopMethods(List<Integer> methodIDs)
+	//for testing purpose we list all threads to select from
+	public void showAllThreads(){
+		ThreadGroup tg = Thread.currentThread().getThreadGroup();
+		while ( tg.getParent() != null ) {
+		    tg = tg.getParent();
+		}
+		Thread t[] = new Thread[1024];
+		int x = tg.enumerate(t, true);
+		for (int i = 0; i < x; i++) {
+		    System.out.printf("%d : t_id: %d , t_name: %s%n", i, t[i].getId(), t[i].getName());
+		}
+	}
+	
+	// ###################################################################################################################
+	//getting thread by ID
+	public Thread getThread( final long id ) {
+		/*
+		Set<Thread> threadSet  = Thread.getAllStackTraces().keySet();
+	    for ( Thread thread : threadSet )
+	        if ( thread.getId( ) == id )
+	        {
+	        	System.out.printf(thread.getId() + ".. name: " + thread.getName());
+	            return thread;
+	        }
+	    return null;
+	    */
+		 
+		
+		ThreadGroup tg = Thread.currentThread().getThreadGroup();
+		while ( tg.getParent() != null ) {
+			tg = tg.getParent();
+		}
+		Thread t[] = new Thread[1024];
+		int xt = tg.enumerate(t, true);
+		
+		for (int i = 0; i < xt; i++) {
+			if( t[i].getId() == id)
+			{
+				System.out.printf("getting thread by ID: %d %d %s%n", i, t[i].getId(), t[i].getName());
+				return t[i];
+			}
+			else
+			{
+				return null;
+			}
+			//System.out.printf("%d %d %s%n", i, t[i].getId(), t[i].getName());
+		}
+		return null;
+		
+	}
+	
+	// ###################################################################################################################
+	//method to calculate % of methods freq.
+	public void showTopMethods()
 	{
-		System.out.printf("*************************************************************************************** %n");
-		Map<Integer, Integer> topIDs = new HashMap<>();
-		methodIDs.stream().distinct().forEach((e)->{topIDs.put(e, 0);});
-		methodIDs.stream().forEach((e)->{topIDs.put(e, topIDs.get(e)+1);});
-		topIDs.entrySet().stream().sorted((e1, e2)->e2.getValue()-e1.getValue()).limit(3).forEach((e)->{
-			System.out.printf("Method ID: %d ... Frequency: %d ... Percentage: %.2f%% ... Name: %s ...  %n", e.getKey(), topIDs.get(e.getKey()), (1.0*e.getValue()/methodIDs.size())*100 , getMethodName(e.getKey())  );});
-		System.out.printf("*************************************************************************************** %n");
+		while(true) {
+			try {
+				Thread.sleep(6000);
+				System.out.printf("*************************************************************************************** %n");
+				Map<Integer, Integer> topIDs = new HashMap<>();
+				int methListSize;
+				synchronized(methodsList) {
+					methodsList.stream().distinct().forEach((e)->{topIDs.put(e, 0);});
+					methodsList.stream().forEach((e)->{topIDs.put(e, topIDs.get(e)+1);});
+					methListSize = methodsList.size();
+					methodsList.clear();
+				}
+				topIDs.entrySet().stream().sorted((e1, e2)->e2.getValue()-e1.getValue()).limit(3).forEach((e)->{
+					System.out.printf("Method ID: %d ... Frequency: %d ... Percentage: %.2f%% ... Name: %s ...  %n", e.getKey(), topIDs.get(e.getKey()), 
+							(1.0*e.getValue()/methListSize)*100, getMethodName(e.getKey())  );});
+				System.out.printf("*************************************************************************************** %n");
+			} catch (Exception e) {
+				System.out.println("*** ERROR WHILE PRINTING CALCULATIONS ***");
+			}
+		}
 	}	
 }

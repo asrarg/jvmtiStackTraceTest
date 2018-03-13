@@ -235,7 +235,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 		if (err != JVMTI_ERROR_NONE)
 		{
-			check_jvmti_error(err, "Error while getting thread infos");
+			check_jvmti_error(err, "Error while getting thread infos: THREAD LIST");
 			continue;
 		}
 
@@ -300,7 +300,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 
 		//just printing data********************************
-
+		/*
 		for(int i=0; i<200;i++)
 		{
 			fprintf(stderr, "%08x ", g_dataBuffer[i]);
@@ -310,6 +310,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 			}
 		}
 		printf("x\n");
+		*/
 		//**************************************************
 
 

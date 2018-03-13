@@ -1,7 +1,7 @@
 # Define a variable for classpath
 CLASS_PATH = .
 
-CURRENT="C:/Users/agd/jvmtiStackTraceTest/jvmtiStackTrace2"
+CURRENT="C:/Users/Peter\ Heusch/Teaching/Bachelor/Gadi/jvmtiStackTrace2"
 JAVA_HOME=C:/Program Files/Java/jdk1.8.0_131
 JAVA=$(JAVA_HOME)/bin/java.exe
 JAVAC=$(JAVA_HOME)/bin/javac.exe
