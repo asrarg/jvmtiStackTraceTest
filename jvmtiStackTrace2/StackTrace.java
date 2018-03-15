@@ -92,7 +92,8 @@ public class StackTrace {
 
 		//converting list string to long
 		List<Long> threadsListLong = new ArrayList<Long>(threadsListString.size());
-		for(String current:threadsListString){
+		for(String current:threadsListString)
+		{
 			threadsListLong.add(Long.parseLong(current));
 		}
 		
@@ -100,14 +101,16 @@ public class StackTrace {
 		Thread threadsList[] = new Thread[numberOfThreads];
 		
 		
+		int i=0;
 		//getting threads by ID
-		for(Long currentThreadID:threadsListLong){
-			int i=0;
+		for(Long currentThreadID:threadsListLong)
+		{
 			Thread threadTemp = getThread(currentThreadID);
+			System.out.println("temp thread: " +threadTemp);
 			if(threadTemp != null)
 			{
 				threadsList[i] = threadTemp;
-				System.out.println("adding to list thread with ID: " + threadsList[i].getId() );
+				System.out.println("adding to list thread with ID: " + threadsList[i].getId());
 				i++;
 			}
 		}
@@ -115,6 +118,10 @@ public class StackTrace {
 		//setting threads list
 		int threadslistlen = threadsList.length;
 		System.out.println("Threads List LENGTH: " + threadslistlen);
+		//for(int len=0; len < threadslistlen; len++)
+		//{
+			//System.out.println("List content["+len+"]: "+ threadsList[len].getName());
+		//}
 		setThreadList(threadsList);
 		
 		
@@ -186,7 +193,8 @@ public class StackTrace {
 	            	int methId = intBuffer.get(currentPosition++);
 	            	currentPosition %= ibuffer_size;
 
-	    			synchronized(methodsList) {
+	    			synchronized(methodsList)
+	    			{
 	    				methodsList.add(methId);
 	    			}
 	    			String methodName = getMethodName(methId);
@@ -216,21 +224,25 @@ public class StackTrace {
 	
 	// ###################################################################################################################
 	//for testing purpose we list all threads to select from
-	public void showAllThreads(){
+	public void showAllThreads()
+	{
 		ThreadGroup tg = Thread.currentThread().getThreadGroup();
-		while ( tg.getParent() != null ) {
+		while ( tg.getParent() != null )
+		{
 		    tg = tg.getParent();
 		}
 		Thread t[] = new Thread[1024];
 		int x = tg.enumerate(t, true);
-		for (int i = 0; i < x; i++) {
+		for (int i = 0; i < x; i++)
+		{
 		    System.out.printf("%d : t_id: %d , t_name: %s%n", i, t[i].getId(), t[i].getName());
 		}
 	}
 	
 	// ###################################################################################################################
 	//getting thread by ID
-	public Thread getThread( final long id ) {
+	public Thread getThread( final long id )
+	{
 		/*
 		Set<Thread> threadSet  = Thread.getAllStackTraces().keySet();
 	    for ( Thread thread : threadSet )
@@ -244,24 +256,23 @@ public class StackTrace {
 		 
 		
 		ThreadGroup tg = Thread.currentThread().getThreadGroup();
-		while ( tg.getParent() != null ) {
+		while ( tg.getParent() != null )
+		{
 			tg = tg.getParent();
 		}
 		Thread t[] = new Thread[1024];
 		int xt = tg.enumerate(t, true);
 		
-		for (int i = 0; i < xt; i++) {
+		for (int i = 0; i < xt; i++)
+		{
 			if( t[i].getId() == id)
 			{
 				System.out.printf("getting thread by ID: %d %d %s%n", i, t[i].getId(), t[i].getName());
 				return t[i];
 			}
-			else
-			{
-				return null;
-			}
 			//System.out.printf("%d %d %s%n", i, t[i].getId(), t[i].getName());
 		}
+		System.out.printf("No thread found for ID: %d%n", id);
 		return null;
 		
 	}
@@ -270,13 +281,15 @@ public class StackTrace {
 	//method to calculate % of methods freq.
 	public void showTopMethods()
 	{
-		while(true) {
+		while(true)
+		{
 			try {
 				Thread.sleep(6000);
 				System.out.printf("*************************************************************************************** %n");
 				Map<Integer, Integer> topIDs = new HashMap<>();
 				int methListSize;
-				synchronized(methodsList) {
+				synchronized(methodsList)
+				{
 					methodsList.stream().distinct().forEach((e)->{topIDs.put(e, 0);});
 					methodsList.stream().forEach((e)->{topIDs.put(e, topIDs.get(e)+1);});
 					methListSize = methodsList.size();
@@ -286,7 +299,8 @@ public class StackTrace {
 					System.out.printf("Method ID: %d ... Frequency: %d ... Percentage: %.2f%% ... Name: %s ...  %n", e.getKey(), topIDs.get(e.getKey()), 
 							(1.0*e.getValue()/methListSize)*100, getMethodName(e.getKey())  );});
 				System.out.printf("*************************************************************************************** %n");
-			} catch (Exception e) {
+			} catch (Exception e)
+			{
 				System.out.println("*** ERROR WHILE PRINTING CALCULATIONS ***");
 			}
 		}

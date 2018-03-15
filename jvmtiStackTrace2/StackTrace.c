@@ -38,14 +38,18 @@ static jmethodID g_idCache[ID_CACHE_SIZE];
 //######################################################################################################################
 JNIEXPORT void JNICALL Java_StackTrace_setThreadList (JNIEnv *env, jobject obj, jobjectArray threadList)
 {
-	free(g_threadList);
+	// Before freeing g_threadList, delete all global reference
+	if ( g_threadList != NULL ) {
+		for(int i=0; i<g_threadCount; i++) {
+			if ( g_threadList[i] != NULL ) {
+				(*env)->DeleteGlobalRef(env, g_threadList[i]);
+				g_threadList[i] = NULL;
+			}
+		}
+		free(g_threadList);
+	}
 	g_threadCount = 0;
 	g_threadList = NULL;
-	if ( g_threadRef != NULL )
-	{
-		(*env)->DeleteGlobalRef(env, g_threadRef);
-		g_threadRef = NULL;
-	}
 	if ( threadList == NULL )
 	{
 		return;
@@ -54,9 +58,9 @@ JNIEXPORT void JNICALL Java_StackTrace_setThreadList (JNIEnv *env, jobject obj, 
 	g_threadList = malloc(g_threadCount*sizeof(jthread));
 	for (int i=0; i<g_threadCount; i++)
 	{
-		g_threadList[i] = (*env)->GetObjectArrayElement(env, threadList, i);
+		g_threadList[i] = (*env)->NewGlobalRef(env, (*env)->GetObjectArrayElement(env, threadList, i));
+		fprintf(stderr, "Thread %d %p\n", i, g_threadList[i]);
 	}
-	g_threadRef = (*env)->NewGlobalRef(env, threadList);
 }
 
 
@@ -226,6 +230,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 		if(g_threadList != NULL)
 		{
 			thread_count = g_threadCount;
+			fprintf(stderr, "GTLST Arg: %d %p %p", thread_count, g_threadList, g_threadList[0]);
 			err = (*jvmti)->GetThreadListStackTraces(jvmti, thread_count, g_threadList, 15, &stack_info);
 		}
 		else
@@ -235,7 +240,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 		if (err != JVMTI_ERROR_NONE)
 		{
-			check_jvmti_error(err, "Error while getting thread infos: THREAD LIST");
+			check_jvmti_error(err, "Error while getting thread infos");
 			continue;
 		}
 
