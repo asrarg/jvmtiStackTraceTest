@@ -79,13 +79,32 @@ public class StackTrace {
 		}
 
 		//******************* BUFFERS AND THREADS *******************
-		//setting sleep time
-		setSleepTime(2000);
+		
 		
 		showAllThreads();
 		
-		//asking user for threads list
+		//asking user for sleepTime/interval AND threads list
 		Scanner scanner = new Scanner(System.in);
+		
+		System.out.print("Enter the sampling interval in milliseconds, e.g. 2000: ");
+		String sleepTimeInMilliSecondsString = scanner.nextLine();
+		int sleepTimeInMilliSecondsInt = Integer.parseInt(sleepTimeInMilliSecondsString);
+		
+		if (sleepTimeInMilliSecondsInt < 2000)
+		{
+			do
+			{
+				System.out.print("sampling interval should be equal to or greater than 2000ms, please enter a valid interval: ");
+				sleepTimeInMilliSecondsString = scanner.nextLine();
+				sleepTimeInMilliSecondsInt = Integer.parseInt(sleepTimeInMilliSecondsString);
+			}
+			while(sleepTimeInMilliSecondsInt < 2000);
+		}
+		else
+		{
+			setSleepTime(sleepTimeInMilliSecondsInt);
+		}
+		
 		System.out.print("Enter threads IDs seperated by commas: ");
 		String threadsString = scanner.nextLine();
 		List<String> threadsListString = Arrays.asList(threadsString.split("\\s*,\\s*"));
