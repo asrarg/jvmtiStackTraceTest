@@ -20,10 +20,10 @@ import java.util.stream.Collectors;
 public class StackTrace {
 
 
-	public final static int bbuffer_size = 3_200;
+	public final static int bbuffer_size = 3200;
 	public final static int ibuffer_size = bbuffer_size / 4;
 	public List<Integer> methodsList = new ArrayList<Integer>();
-	
+
 	//getting stack trace as a lineared byte buffer every x ms (y is for switching fetching for stacktrace on or off)
 	public native void startStackTrace();
 	//is there a black Swan event?
@@ -37,10 +37,10 @@ public class StackTrace {
 	public native void setThreadList(Thread threadList[]);
 	public native String getMethodName(int methodID);
 	public native void setBuffers(IntBuffer buff); //setting the buffers
-	
+
 	private IntBuffer intBuffer;
 	private int currentPosition = 0;
-	
+
 	// ###############################################MAIN################################################################
 
 	//check if buffer has data in it (this is not correct! should be by the current position)
@@ -48,23 +48,25 @@ public class StackTrace {
 	{
 		return intBuffer.get(currentPosition)!=0;
 	}
-	
+
 	// ###############################################MAIN################################################################
 	public static void main(String[] args) throws Exception {
 		StackTrace jniObject = new StackTrace();
 		jniObject.run();
 	}
-	
+
 	// ###############################################MAIN################################################################
 	public void run() throws Exception
 	{
-		
+
 		//setting the getting stakc trace to true
 		setStackTraceRunning(true);
-		
+
+		/*
 		//printing name of current thread
 		System.out.println("Current thread name: " + getCurrentThreadName());
 
+		
 		//printing top methods
 		System.out.println("Print Top Methods");
 		String[] methods = getTopMethods();
@@ -76,20 +78,20 @@ public class StackTrace {
 			}
 		} else {
 			System.out.println("Got NULL from JNI.");
-		}
+		}*/
 
 		//******************* BUFFERS AND THREADS *******************
-		
-		
+
+
 		showAllThreads();
-		
+
 		//asking user for sleepTime/interval AND threads list
 		Scanner scanner = new Scanner(System.in);
-		
+
 		System.out.print("Enter the sampling interval in milliseconds, e.g. 2000: ");
 		String sleepTimeInMilliSecondsString = scanner.nextLine();
 		int sleepTimeInMilliSecondsInt = Integer.parseInt(sleepTimeInMilliSecondsString);
-		
+
 		if (sleepTimeInMilliSecondsInt < 2000)
 		{
 			do
@@ -104,7 +106,7 @@ public class StackTrace {
 		{
 			setSleepTime(sleepTimeInMilliSecondsInt);
 		}
-		
+
 		System.out.print("Enter threads IDs seperated by commas: ");
 		String threadsString = scanner.nextLine();
 		List<String> threadsListString = Arrays.asList(threadsString.split("\\s*,\\s*"));
@@ -115,44 +117,41 @@ public class StackTrace {
 		{
 			threadsListLong.add(Long.parseLong(current));
 		}
-		
+
 		int numberOfThreads = threadsListString.size();
 		Thread threadsList[] = new Thread[numberOfThreads];
-		
-		
+
+
 		int i=0;
 		//getting threads by ID
 		for(Long currentThreadID:threadsListLong)
 		{
 			Thread threadTemp = getThread(currentThreadID);
-			System.out.println("temp thread: " +threadTemp);
 			if(threadTemp != null)
 			{
 				threadsList[i] = threadTemp;
-				System.out.println("adding to list thread with ID: " + threadsList[i].getId());
 				i++;
 			}
 		}
-		
+
 		//setting threads list
 		int threadslistlen = threadsList.length;
-		System.out.println("Threads List LENGTH: " + threadslistlen);
-		//for(int len=0; len < threadslistlen; len++)
-		//{
-			//System.out.println("List content["+len+"]: "+ threadsList[len].getName());
-		//}
 		setThreadList(threadsList);
-		
-		
+
+
 		ByteBuffer bb = ByteBuffer.allocateDirect(bbuffer_size);
 		bb.order(ByteOrder.nativeOrder());
 		intBuffer = bb.asIntBuffer();
 		setBuffers(intBuffer);
-		
+
 		startStackTrace();
-		
+
 		//special thread for showTopMethods
-		new Thread(()->{showTopMethods();}).start();//runnable and in separate class, search for "schedualed executer service"
+		new Thread(new Runnable(){
+			public void run() {
+				showTopMethods();
+			}
+		}).start();//runnable and in separate class, search for "schedualed executer service"
 
 		//threads and synch
 		while(true)
@@ -178,69 +177,69 @@ public class StackTrace {
 		}
 
 		System.out.printf("%n");
-        //printing what is in buffer
-        int start = currentPosition;
-        int tagS = intBuffer.get(currentPosition++);
+		//printing what is in buffer
+		int start = currentPosition;
+		int tagS = intBuffer.get(currentPosition++);
 		currentPosition %= ibuffer_size;
-        int data_size = intBuffer.get(currentPosition++);
-        currentPosition %= ibuffer_size;
-        int thread_count = intBuffer.get(currentPosition++);
-        System.out.printf("Stack Trace: %d %d %d %n", tagS, data_size, thread_count);
-		
+		int data_size = intBuffer.get(currentPosition++);
+		currentPosition %= ibuffer_size;
+		int thread_count = intBuffer.get(currentPosition++);
+		System.out.printf("Stack Trace: %d %d %d %n", tagS, data_size, thread_count);
+
 		//collecting all method Ids in list to calculate most frequent methods
 		//do calculation once every 2 stack traces (something like every 1 minute or so)
-		
-        
-        
-        //List<Integer> methodsList = new ArrayList<Integer>(); // consider hash map
+
+
+
+		//List<Integer> methodsList = new ArrayList<Integer>(); // consider hash map
 		//HashMap<Integer, String> methodIDsNames = new HashMap<Integer, String>();
-		
-		 for(int thread = 0; thread<thread_count; thread++)
-		 {
-	            int tid = intBuffer.get(currentPosition++);
-	            currentPosition %= ibuffer_size;
-	            int state = intBuffer.get(currentPosition++);
-	            currentPosition %= ibuffer_size;
-	            int frame_count = intBuffer.get(currentPosition++);
-	            currentPosition %= ibuffer_size;
-	            System.out.printf("Thread Trace: %d %d %d %n", tid, state, frame_count);
+
+		for(int thread = 0; thread<thread_count; thread++)
+		{
+			int tid = intBuffer.get(currentPosition++);
+			currentPosition %= ibuffer_size;
+			int state = intBuffer.get(currentPosition++);
+			currentPosition %= ibuffer_size;
+			int frame_count = intBuffer.get(currentPosition++);
+			currentPosition %= ibuffer_size;
+			System.out.printf("Thread Trace: %d %d %d %n", tid, state, frame_count);
 
 
-	            for (int frame = 0; frame<frame_count; frame++)
-	            {
+			for (int frame = 0; frame<frame_count; frame++)
+			{
 
-	            	int methId = intBuffer.get(currentPosition++);
-	            	currentPosition %= ibuffer_size;
+				int methId = intBuffer.get(currentPosition++);
+				currentPosition %= ibuffer_size;
 
-	    			synchronized(methodsList)
-	    			{
-	    				methodsList.add(methId);
-	    			}
-	    			String methodName = getMethodName(methId);
-            		//methodIDsNames.put(methId, methodName);
+				synchronized(methodsList)
+				{
+					methodsList.add(methId);
+				}
+				String methodName = getMethodName(methId);
+				//methodIDsNames.put(methId, methodName);
 
-	            	int location = intBuffer.get(currentPosition++);
-	            	currentPosition %= ibuffer_size;
+				int location = intBuffer.get(currentPosition++);
+				currentPosition %= ibuffer_size;
 
-	            	System.out.printf("Frame Trace: %s %d %n", methodName, location);
-	            }		 }
+				System.out.printf("Frame Trace: %s %d %n", methodName, location);
+			}		 }
 
 
-		 System.out.printf("Cleanup: %d %d %d%n", start, currentPosition, ibuffer_size);
+		System.out.printf("Cleanup: %d %d %d%n", start, currentPosition, ibuffer_size);
 
-		 while ( start != currentPosition )
-		 {
-			 System.out.printf("%d ", start);
-			 intBuffer.put(start, 0);
-			 start = ( start+1 ) % ibuffer_size;
-		 }
-		 
-		 //showTopMethods(methodsList);
+		while ( start != currentPosition )
+		{
+			System.out.printf("%d ", start);
+			intBuffer.put(start, 0);
+			start = ( start+1 ) % ibuffer_size;
+		}
 
-		 System.out.println();
+		//showTopMethods(methodsList);
+
+		System.out.println();
 	}
 
-	
+
 	// ###################################################################################################################
 	//for testing purpose we list all threads to select from
 	public void showAllThreads()
@@ -248,16 +247,16 @@ public class StackTrace {
 		ThreadGroup tg = Thread.currentThread().getThreadGroup();
 		while ( tg.getParent() != null )
 		{
-		    tg = tg.getParent();
+			tg = tg.getParent();
 		}
 		Thread t[] = new Thread[1024];
 		int x = tg.enumerate(t, true);
 		for (int i = 0; i < x; i++)
 		{
-		    System.out.printf("%d : t_id: %d , t_name: %s%n", i, t[i].getId(), t[i].getName());
+			System.out.printf("%d : t_id: %d , t_name: %s%n", i, t[i].getId(), t[i].getName());
 		}
 	}
-	
+
 	// ###################################################################################################################
 	//getting thread by ID
 	public Thread getThread( final long id )
@@ -271,9 +270,9 @@ public class StackTrace {
 	            return thread;
 	        }
 	    return null;
-	    */
-		 
-		
+		 */
+
+
 		ThreadGroup tg = Thread.currentThread().getThreadGroup();
 		while ( tg.getParent() != null )
 		{
@@ -281,7 +280,7 @@ public class StackTrace {
 		}
 		Thread t[] = new Thread[1024];
 		int xt = tg.enumerate(t, true);
-		
+
 		for (int i = 0; i < xt; i++)
 		{
 			if( t[i].getId() == id)
@@ -293,9 +292,9 @@ public class StackTrace {
 		}
 		System.out.printf("No thread found for ID: %d%n", id);
 		return null;
-		
+
 	}
-	
+
 	// ###################################################################################################################
 	//method to calculate % of methods freq.
 	public void showTopMethods()
@@ -304,19 +303,42 @@ public class StackTrace {
 		{
 			try {
 				Thread.sleep(6000);
-				System.out.printf("*************************************************************************************** %n");
-				Map<Integer, Integer> topIDs = new HashMap<>();
-				int methListSize;
 				synchronized(methodsList)
 				{
-					methodsList.stream().distinct().forEach((e)->{topIDs.put(e, 0);});
-					methodsList.stream().forEach((e)->{topIDs.put(e, topIDs.get(e)+1);});
-					methListSize = methodsList.size();
+
+					System.out.printf("*************************************************************************************** %n");
+					Map<Integer, Integer> topIDs = new HashMap<Integer, Integer>();
+					int methListSize = methodsList.size();
+
+
+					for (int element : methodsList) {
+						int curr = element;
+						Integer count = 1;
+						if (topIDs.containsKey(curr)) {
+							count = topIDs.get(curr);
+							count++;
+						}
+						topIDs.put(curr, count);
+					}
+
+					int[] rep = new int[3];
+					for (Integer e: topIDs.keySet()) {
+						Integer count = topIDs.get(e);
+						if (count > rep[0]) {
+							rep[0] = e;
+							Arrays.sort(rep);
+							System.out.printf("METHOD LIST SIZE: %d %n", methListSize);
+							System.out.printf("METHOD LIST 3 SIZE: %d ,  %d ,  %d %n",rep[0], rep[1],rep[2]);
+							System.out.printf("Method ID: %d ... Frequency: %d ... Percentage: %.2f%% ... Name: %s ...  %n", e, topIDs.get(e), 
+									(1.0*topIDs.get(e)/methListSize)*100, getMethodName(e) );
+						}
+					}
 					methodsList.clear();
 				}
-				topIDs.entrySet().stream().sorted((e1, e2)->e2.getValue()-e1.getValue()).limit(3).forEach((e)->{
-					System.out.printf("Method ID: %d ... Frequency: %d ... Percentage: %.2f%% ... Name: %s ...  %n", e.getKey(), topIDs.get(e.getKey()), 
-							(1.0*e.getValue()/methListSize)*100, getMethodName(e.getKey())  );});
+
+				//				topIDs.entrySet().stream().sorted((e1, e2)->e2.getValue()-e1.getValue()).limit(3).forEach((e)->{
+				//					System.out.printf("Method ID: %d ... Frequency: %d ... Percentage: %.2f%% ... Name: %s ...  %n", e.getKey(), topIDs.get(e.getKey()), 
+				//							(1.0*e.getValue()/methListSize)*100, getMethodName(e.getKey())  );});
 				System.out.printf("*************************************************************************************** %n");
 			} catch (Exception e)
 			{

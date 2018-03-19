@@ -52,7 +52,7 @@ public class GaussianEliminationMethod {
 
 	// sample client
 	public static void main(String[] args) {
-		int n = 3;
+		int n = 3;Arrays.de
 		double[][] A = {
 				{ 0, 1,  1 },
 				{ 2, 4, -2 },

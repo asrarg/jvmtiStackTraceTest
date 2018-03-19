@@ -58,7 +58,7 @@ StackTrace.h : StackTrace.class
 	"$(JAVAH)" -classpath $(CLASS_PATH) $*
 
 StackTrace.class: StackTrace.java
-	"$(JAVAC)" -d . StackTrace.java
+	"$(JAVAC)" -target 1.6 -source 1.6 -d . StackTrace.java
 	
 clean :
 	rm -f StackTrace.h StackTrace.o $(TARGET) StackTrace.class

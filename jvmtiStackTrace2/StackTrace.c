@@ -214,7 +214,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 	while (g_stackTraceRunning)
 	{
-		fprintf(stderr, "Sleep Timer: %d\n", g_sleepTimer);
+		//fprintf(stderr, "Sleep Timer: %d\n", g_sleepTimer);
 #ifdef WINDOWS
 		Sleep(g_sleepTimer);
 #else
@@ -230,7 +230,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 		if(g_threadList != NULL)
 		{
 			thread_count = g_threadCount;
-			fprintf(stderr, "GTLST Arg: %d %p %p", thread_count, g_threadList, g_threadList[0]);
+			//fprintf(stderr, "GTLST Arg: %d %p %p", thread_count, g_threadList, g_threadList[0]);
 			err = (*jvmti)->GetThreadListStackTraces(jvmti, thread_count, g_threadList, 15, &stack_info);
 		}
 		else
@@ -257,9 +257,9 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 
 		jlong currentOffset = currentPos + 1;
-		fprintf(stderr, "Buffer later: %p %ld\n", g_dataBuffer, g_dataCapacity);
+		//fprintf(stderr, "Buffer later: %p %ld\n", g_dataBuffer, g_dataCapacity);
 		//adding total data size to the beginning (2nd slot) of buffer
-		fprintf(stderr, "Memcpy: %p %p\n", &g_dataBuffer[currentOffset], &data_size);
+		//fprintf(stderr, "Memcpy: %p %p\n", &g_dataBuffer[currentOffset], &data_size);
 		memcpy(&g_dataBuffer[currentOffset], &data_size, sizeof(jint));
 		SET_CURRENT_OFFSET(currentOffset, g_dataCapacity);
 		//adding total thread count to the beginning (2nd slot) of buffer
