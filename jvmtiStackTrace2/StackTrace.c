@@ -488,7 +488,9 @@ JNIEXPORT jobjectArray JNICALL Java_StackTrace_getTopMethods(JNIEnv *env, jobjec
 	if (err != JVMTI_ERROR_NONE)
 	{
 		check_jvmti_error(err, "Error while getting thread infos");
-	} else {
+	}
+	else
+	{
 
 		// creating array
 		myArray = (*env)->NewObjectArray(env, thread_count, (*env)->FindClass(env,"java/lang/String"), 0);

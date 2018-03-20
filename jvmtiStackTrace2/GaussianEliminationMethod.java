@@ -175,8 +175,10 @@ final public class Matrix {
 	}
 
 	// print matrix to standard output
-	public void show() {
-		for (int i = 0; i < M; i++) {
+	public void show()
+	{
+		for (int i = 0; i < M; i++)
+		{
 			for (int j = 0; j < N; j++) 
 				StdOut.printf("%9.4f ", data[i][j]);
 			StdOut.println();

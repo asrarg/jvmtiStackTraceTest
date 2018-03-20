@@ -147,7 +147,8 @@ public class StackTrace {
 		startStackTrace();
 
 		//special thread for showTopMethods
-		new Thread(new Runnable(){
+		new Thread(new Runnable()
+		{
 			public void run() {
 				showTopMethods();
 			}
