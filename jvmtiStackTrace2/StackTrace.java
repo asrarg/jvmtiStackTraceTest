@@ -88,19 +88,19 @@ public class StackTrace {
 		//asking user for sleepTime/interval AND threads list
 		Scanner scanner = new Scanner(System.in);
 
-		System.out.print("Enter the sampling interval in milliseconds, e.g. 2000: ");
+		System.out.print("Enter the sampling interval in milliseconds, e.g. 10: ");
 		String sleepTimeInMilliSecondsString = scanner.nextLine();
 		int sleepTimeInMilliSecondsInt = Integer.parseInt(sleepTimeInMilliSecondsString);
 
-		if (sleepTimeInMilliSecondsInt < 2000)
+		if (sleepTimeInMilliSecondsInt < 10)
 		{
 			do
 			{
-				System.out.print("sampling interval should be equal to or greater than 2000ms, please enter a valid interval: ");
+				System.out.print("sampling interval should be equal to or greater than 10ms, please enter a valid interval: ");
 				sleepTimeInMilliSecondsString = scanner.nextLine();
 				sleepTimeInMilliSecondsInt = Integer.parseInt(sleepTimeInMilliSecondsString);
 			}
-			while(sleepTimeInMilliSecondsInt < 2000);
+			while(sleepTimeInMilliSecondsInt < 10);
 		}
 		else
 		{
@@ -164,7 +164,9 @@ public class StackTrace {
 					intBuffer.wait();
 				}
 			}
-			consume();
+			synchronized(methodsList) {
+				consume();
+			}
 		}
 	}
 	// ###############################################MAIN################################################################
@@ -211,18 +213,16 @@ public class StackTrace {
 				int methId = intBuffer.get(currentPosition++);
 				currentPosition %= ibuffer_size;
 
-				synchronized(methodsList)
-				{
-					methodsList.add(methId);
-				}
+				methodsList.add(methId);
 				String methodName = getMethodName(methId);
 				//methodIDsNames.put(methId, methodName);
 
 				int location = intBuffer.get(currentPosition++);
 				currentPosition %= ibuffer_size;
 
-				System.out.printf("Frame Trace: %s %d %n", methodName, location);
-			}		 }
+				//System.out.printf("Frame Trace: %s %d %n", methodName, location);
+			}		 
+		}
 
 
 		System.out.printf("Cleanup: %d %d %d%n", start, currentPosition, ibuffer_size);
