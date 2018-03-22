@@ -17,28 +17,26 @@ import java.util.stream.Collectors;
  *  Compilation:  javac Matrix.java
  *  Execution:    java Matrix
  *
- *  A bare-bones immutable data type for M-by-N matrices.
+ *  A bare-bones immutable data type for N-by-N matrices.
  *
  ******************************************************************************/
 
 final public class Matrix {
-	private final int M;             // number of rows
 	private final int N;             // number of columns
 	private final double[][] data;   // M-by-N array
 
 	// create M-by-N matrix of 0's
-	public Matrix(int M, int N) {
-		this.M = M;
+	public Matrix(int N) {
 		this.N = N;
-		data = new double[M][N];
+		data = new double[N][N];
 	}
 
 	// create matrix based on 2d array
 	public Matrix(double[][] data) {
-		M = data.length;
+		//M = data.length;
 		N = data[0].length;
-		this.data = new double[M][N];
-		for (int i = 0; i < M; i++)
+		this.data = new double[N][N];
+		for (int i = 0; i < N; i++)
 			for (int j = 0; j < N; j++)
 				this.data[i][j] = data[i][j];
 	}
@@ -46,12 +44,15 @@ final public class Matrix {
 	// copy constructor
 	private Matrix(Matrix A) { this(A.data); }
 
-	// create and return a random M-by-N matrix with values between 0 and 1
-	public static Matrix random(int M, int N) {
-		Matrix A = new Matrix(M, N);
-		for (int i = 0; i < M; i++)
+	// create and return a random N-by-N matrix with values between 0 and 1
+	public static Matrix random(int N) {
+		Matrix A = new Matrix(N);
+		for (int i = 0; i < N; i++) {
+			double diag = 0;
 			for (int j = 0; j < N; j++)
-				A.data[i][j] = Math.random();
+				diag += A.data[i][j] = Math.random();
+			A.data[i][i] = diag;
+		}
 		return A;
 	}
 
@@ -72,8 +73,8 @@ final public class Matrix {
 
 	// create and return the transpose of the invoking matrix
 	public Matrix transpose() {
-		Matrix A = new Matrix(N, M);
-		for (int i = 0; i < M; i++)
+		Matrix A = new Matrix(N, N);
+		for (int i = 0; i < N; i++)
 			for (int j = 0; j < N; j++)
 				A.data[j][i] = this.data[i][j];
 		return A;
@@ -82,9 +83,9 @@ final public class Matrix {
 	// return C = A + B
 	public Matrix plus(Matrix B) {
 		Matrix A = this;
-		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
-		Matrix C = new Matrix(M, N);
-		for (int i = 0; i < M; i++)
+		if (B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
+		Matrix C = new Matrix(N);
+		for (int i = 0; i < N; i++)
 			for (int j = 0; j < N; j++)
 				C.data[i][j] = A.data[i][j] + B.data[i][j];
 		return C;
@@ -94,9 +95,9 @@ final public class Matrix {
 	// return C = A - B
 	public Matrix minus(Matrix B) {
 		Matrix A = this;
-		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
-		Matrix C = new Matrix(M, N);
-		for (int i = 0; i < M; i++)
+		if (B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
+		Matrix C = new Matrix(N);
+		for (int i = 0; i < N; i++)
 			for (int j = 0; j < N; j++)
 				C.data[i][j] = A.data[i][j] - B.data[i][j];
 		return C;
@@ -105,8 +106,8 @@ final public class Matrix {
 	// does A = B exactly?
 	public boolean eq(Matrix B) {
 		Matrix A = this;
-		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
-		for (int i = 0; i < M; i++)
+		//if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
+		for (int i = 0; i < N; i++)
 			for (int j = 0; j < N; j++)
 				if (A.data[i][j] != B.data[i][j]) return false;
 		return true;
@@ -115,9 +116,9 @@ final public class Matrix {
 	// return C = A * B
 	public Matrix times(Matrix B) {
 		Matrix A = this;
-		if (A.N != B.M) throw new RuntimeException("Illegal matrix dimensions.");
-		Matrix C = new Matrix(A.M, B.N);
-		for (int i = 0; i < C.M; i++)
+		//if (A.N != B.M) throw new RuntimeException("Illegal matrix dimensions.");
+		Matrix C = new Matrix(A.N, B.N);
+		for (int i = 0; i < C.N; i++)
 			for (int j = 0; j < C.N; j++)
 				for (int k = 0; k < A.N; k++)
 					C.data[i][j] += (A.data[i][k] * B.data[k][j]);
@@ -127,8 +128,8 @@ final public class Matrix {
 
 	// return x = A^-1 b, assuming A is square and has full rank
 	public Matrix solve(Matrix rhs) {
-		if (M != N || rhs.M != N || rhs.N != 1)
-			throw new RuntimeException("Illegal matrix dimensions.");
+		//if (M != N || rhs.M != N || rhs.N != 1)
+			//throw new RuntimeException("Illegal matrix dimensions.");
 
 		// create copies of the data
 		Matrix A = new Matrix(this);
@@ -177,7 +178,7 @@ final public class Matrix {
 	// print matrix to standard output
 	public void show()
 	{
-		for (int i = 0; i < M; i++)
+		for (int i = 0; i < N; i++)
 		{
 			for (int j = 0; j < N; j++) 
 				StdOut.printf("%9.4f ", data[i][j]);
@@ -187,94 +188,55 @@ final public class Matrix {
 
 
 
+	private static int getIntArg(String arg, int min, int max, String mesg) {
+		try {
+			int result = Integer.parseInt(arg);
+			if ( result < min || result > max ) {
+				System.err.println(mesg);
+				System.exit(1);
+			}
+			return result;
+		}
+		catch ( NumberFormatException ex ) {
+			System.err.println(String.format("Invalid integer input %s", arg));
+			System.exit(1);
+		}
+	}
+	
 	// test client
-	public static void main(String[] args) {
-		
-		Scanner scanner = new Scanner(System.in);
-
-		//getting size of matrix
-		System.out.print("Enter Matrix size M*N, e.g. 100*100: ");
-		String matrixSizeString = scanner.nextLine();
-		String[] matrixSizeNumbers = string.split("*");
-		//checking user input
-		if(matrixSizeNumbers.length == 0 )
-		{
-			
-			do
-			{
-				System.out.print("Enter Matrix size M*N, e.g. 100*100: ");
-				String matrixSizeString = scanner.nextLine();
-				matrixSizeNumbers[] = string.split("*");
-			}
-			while(matrixSizeNumbers.length == 0)
+	public static void main (String[] args) {
+		if ( args.length != 4 ) {
+			System.err.printf("Arguments: <matrix size> <computing threads> <monitored threads> <trace interval>");
+			System.exit(1);
 		}
 		
-		int mMatrix = Integer.parseInt(matrixSizeNumbers[0]);
-		int nMatrix = Integer.parseInt(matrixSizeNumbers[1]);
-		//checking if user input (matrix size) is greater than 0*0
-		if(mMatrix <= 2 && nMatrix <= 2)
-		{
-			do
-			{
-				System.out.print("Enter valid Matrix size M*N, minimum is 3*3: ");
-				String matrixSizeString = scanner.nextLine();
-				matrixSizeNumbers[] = string.split("*");
-				mMatrix = Integer.parseInt(matrixSizeNumbers[0]);
-				nMatrix = Integer.parseInt(matrixSizeNumbers[1]);
-			}
-			while(mMatrix <= 2 && nMatrix <= 2)
-			
-		}
-
-		System.out.print("Enter number of threads to be created, e.g. 20: ");
-		String numOfThreadsString = scanner.nextLine();
-		int numOfThreadsInt = Integer.parseInt(numOfThreadsString);
-		//checking if number of threads to be created is more than 0
-		if(numOfThreadsInt <= 0)
-		{
-			do
-			{
-				System.out.print("Enter a valid number of threads to be created, e.g. 20: ");
-				numOfThreadsString = scanner.nextLine();
-				numOfThreadsInt = Integer.parseInt(numOfThreadsString);
-			}
-			while(numOfThreadsInt <= 0)
-		}
+		int matrix = getIntArg(args[0], 10, 10000, "Invalid matrix size, must be between 10 and 10000");
+		int cthreads = getIntArg(args[1], 1, 200, "Invalid computing threads, must be between 1 and 200");
+		int tthreads = getIntArg(args[2], 1, cthreads, "Invalid monitored threads, must be between 1 and total number of threads");
+		int traceint = getIntArg(args[3], 1, 1000, "Invalid trace interval, must be between 1 and 1000 ms");
 		
-		System.out.print("Enter number of threads to be monitored, e.g. 3: ");
-		String numOfMonitoredThreadsString = scanner.nextLine();
-		int numOfMonitoredThreadsInt = Integer.parseInt(numOfMonitoredThreadsString);
-		//checking if number of selected threads to be monitored is greater than 0 but less than number of created threads
-		if(numOfMonitoredThreadsInt <= 0 || numOfMonitoredThreadsInt > numOfThreadsInt)
-		{
-			do
-			{
-				System.out.print("Enter a valid number of threads to be monitored, greater than 0 and less than"+ numOfThreadsInt +": ");
-				numOfMonitoredThreadsString = scanner.nextLine();
-				numOfMonitoredThreadsInt = Integer.parseInt(numOfMonitoredThreadsString);
-			}
-			while(numOfMonitoredThreadsInt <= 0 || numOfMonitoredThreadsInt > numOfThreadsInt)
-		}
-		
-		System.out.print("Enter the sampling interval in milliseconds, e.g. 10: ");
-		String sleepTimeInMilliSecondsString = scanner.nextLine();
-		int sleepTimeInMilliSecondsInt = Integer.parseInt(sleepTimeInMilliSecondsString);
-		//checking if sleeping time is less than 10ms
-		if (sleepTimeInMilliSecondsInt < 10)
-		{
-			do
-			{
-				System.out.print("sampling interval should be equal to or greater than 10ms, please enter a valid interval: ");
-				sleepTimeInMilliSecondsString = scanner.nextLine();
-				sleepTimeInMilliSecondsInt = Integer.parseInt(sleepTimeInMilliSecondsString);
-			}
-			while(sleepTimeInMilliSecondsInt < 10);
-		}
-
 		//creating the Matrix
-		Matrix A = Matrix.random(mMatrix, nMatrix );
-		A.show();
+		Thread threads[] = new Thread[cthreads];
+		for(int i=0; i<cthreads; i++) {
+			threads[i] = new Thread(new Runnable(){
+				public void run() {
+					Matrix A = Matrix.random(matrix, matrix );
+					A.show();
+				}
+			});
+		}
+		List threadList = Arrays.asList(threads);
+		Collections.shuffle(threadList);
+		threadList.toArray(threads);
+		Thread traced[] = Arrays.copyOf(original, tthreads);
+
+		for(Thread t: threads) {
+			t.start();
+		}
+		
 		StdOut.println();
+		
+		
 		
 		/*
 		double[][] d = { { 1, 2, 3 }, { 4, 5, 6 }, { 9, 1, 3} };
