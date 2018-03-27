@@ -116,7 +116,7 @@ JNIEXPORT jstring JNICALL Java_StackTrace_getMethodName (JNIEnv *env, jobject ob
 
 // #####################################################################################################################
 // Checking jvmtiErrors and print them out.
-void check_jvmti_error(jvmtiError error, char *str)
+void check_jvmti_error_internal(const char *file, int line, jvmtiError error, char *str)
 {
 
 	// check if it is an error
@@ -128,12 +128,13 @@ void check_jvmti_error(jvmtiError error, char *str)
 		(*jvmti)->GetErrorName(jvmti, error, &err_name);
 
 		// print the error + given message to the console
-		printf("NATIVE: ERROR: JVMTI: %d(%s): %s\n", error,
+		printf("NATIVE: ERROR: JVMTI: %s->%d, %d(%s): %s\n", file, line, error,
 				(err_name == NULL ? "Unknown" : err_name),
 				(str == NULL ? "" : str));
 	}
 }
 
+#define check_jvmti_error(a, b) check_jvmti_error_internal(__FILE__, __LINE__, a, b)
 
 // #####################################################################################################################
 JNIEXPORT void JNICALL Java_StackTrace_setSleepTime(JNIEnv *env, jobject obj, jint sleepTime)
@@ -193,6 +194,7 @@ JNIEXPORT void JNICALL Java_StackTrace_setBuffers(JNIEnv *env, jobject obj, jobj
     g_dataBuffer = (jint *) (*env)->GetDirectBufferAddress(env, b1);
     g_dataReference = (*env)->NewGlobalRef(env, b1);
     g_dataCapacity = (*env)->GetDirectBufferCapacity(env, b1);
+    printf("\n");
     fprintf(stderr, "Buffer initially: %p %ld\n", g_dataBuffer, g_dataCapacity);
 }
 
@@ -214,12 +216,17 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 	while (g_stackTraceRunning)
 	{
+		jvmtiPhase phase;
 		//fprintf(stderr, "Sleep Timer: %d\n", g_sleepTimer);
 #ifdef WINDOWS
 		Sleep(g_sleepTimer);
 #else
 		usleep(g_sleepTimer*1000);
 #endif
+		if ( (*jvmti)->GetPhase(jvmti, &phase) == JVMTI_ERROR_NONE && phase == JVMTI_PHASE_DEAD  ) {
+			printf("Terminating stack trace\n");
+			break;
+		}
 		jvmtiStackInfo *stack_info;
 		jint thread_count;
 
@@ -240,6 +247,10 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 		if (err != JVMTI_ERROR_NONE)
 		{
+			if ( err == JVMTI_ERROR_WRONG_PHASE && (*jvmti)->GetPhase(jvmti, &phase) == JVMTI_ERROR_NONE && phase == JVMTI_PHASE_DEAD ) {
+				printf("Terminating stack trace\n");
+				break;
+			}
 			check_jvmti_error(err, "Error while getting thread infos");
 			continue;
 		}
@@ -254,12 +265,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 			data_size += 3 + 3*infop->frame_count;
 		}
 
-
-
 		jlong currentOffset = currentPos + 1;
-		//fprintf(stderr, "Buffer later: %p %ld\n", g_dataBuffer, g_dataCapacity);
-		//adding total data size to the beginning (2nd slot) of buffer
-		//fprintf(stderr, "Memcpy: %p %p\n", &g_dataBuffer[currentOffset], &data_size);
 		memcpy(&g_dataBuffer[currentOffset], &data_size, sizeof(jint));
 		SET_CURRENT_OFFSET(currentOffset, g_dataCapacity);
 		//adding total thread count to the beginning (2nd slot) of buffer
@@ -275,7 +281,6 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 			jint state = infop->state;
 			jint frame_count = infop->frame_count;
 			jvmtiFrameInfo *frames = infop->frame_buffer;
-
 
 			//thread info
 			memcpy(&g_dataBuffer[currentOffset], &tid, sizeof(jint));
@@ -302,24 +307,6 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 		//adding state of buffer to the beginning (1st slot) of buffer
 		memcpy(&g_dataBuffer[currentPos], &tagD, sizeof(jint));
-
-
-		//just printing data********************************
-		/*
-		for(int i=0; i<200;i++)
-		{
-			fprintf(stderr, "%08x ", g_dataBuffer[i]);
-			if ( i % 8 == 7 )
-			{
-				fprintf(stderr, "\n");
-			}
-		}
-		printf("x\n");
-		*/
-		//**************************************************
-
-
-
 
 		err = (*jvmti)->Deallocate(jvmti, (unsigned char *)stack_info);
 		check_jvmti_error(err, "Error while deallocating memory");
@@ -365,8 +352,6 @@ JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env, jobject obj)
 	jthread threadObj = (*env)->NewObject(env, threadClass, methodID);
 	if (obj == NULL)
 		printf("jobject error.");
-
-	// Set Daemon Thread //TODO check differecne between daemon and agent thread
 
 // like thread.start() for native thread
 	jvmtiError error = (*jvmti)->RunAgentThread(jvmti, threadObj, getStackTrace, NULL, JVMTI_THREAD_MAX_PRIORITY);

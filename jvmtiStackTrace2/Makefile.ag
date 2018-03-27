@@ -51,7 +51,7 @@ $(TARGET) : StackTrace.o
 
 # $@ matches the target, $< matches the first dependancy
 StackTrace.o : StackTrace.c StackTrace.h
-	"$(GCC)" $(OPTIONS) -I"$(JAVA_HOME)/include" -I"$(JAVA_HOME)/include/$(SYSINC)" -D__int64="long long" $(DEFINES) -c $< -o $@
+	"$(GCC)" $(OPTIONS) -I"$(JAVA_HOME)/include" -I"$(JAVA_HOME)/include/$(SYSINC)"  -D__int64="long long" $(DEFINES) -c $< -o $@
 
 # $* matches the target filename without the extension
 StackTrace.h : StackTrace.class
@@ -59,9 +59,12 @@ StackTrace.h : StackTrace.class
 
 StackTrace.class: StackTrace.java
 	"$(JAVAC)" -target 1.6 -source 1.6 -d . StackTrace.java
+
+Matrix.class: Matrix.java
+	"$(JAVAC)" -target 1.6 -source 1.6 -d . Matrix.java
 	
 clean :
 	rm -f StackTrace.h StackTrace.o $(TARGET) StackTrace.class
 	
-test: $(TARGET) StackTrace.class
+test: $(TARGET) StackTrace.class Matrix.class
 	"$(JAVA)" -agentpath:"$(CURRENT)/$(TARGET)" -classpath . StackTrace

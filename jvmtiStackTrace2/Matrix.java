@@ -12,6 +12,10 @@ import java.text.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.Locale;
 
 /******************************************************************************
  *  Compilation:  javac Matrix.java
@@ -22,37 +26,117 @@ import java.util.stream.Collectors;
  ******************************************************************************/
 
 final public class Matrix {
+	private final int M;             // number of rows
 	private final int N;             // number of columns
 	private final double[][] data;   // M-by-N array
 
+	// test client
+	public static void main (String[] args) {
+		if ( args.length != 2 ) {
+			System.err.printf("Arguments: <matrix size> <computing threads>");
+			System.exit(1);
+		}
+
+		final int matrixSize = getIntArg(args[0], 10, 10000, "Invalid matrix size %d, must be between 10 and 10000");
+		final int cthreads = getIntArg(args[1], 1, 200, "Invalid computing threads %d, must be between 1 and 200");
+
+		//creating the Matrix
+		Thread threads[] = new Thread[cthreads];
+		for(int i=0; i<cthreads; i++) {
+			threads[i] = new Thread(new Runnable(){
+				public void run() {
+					Matrix A = Matrix.random(matrixSize, matrixSize );
+					A.show();
+					System.out.printf("**********************************END OF MATRIX********************************** %n");
+				}
+			});
+			threads[i].setName("Gauss");
+		}
+
+		for(Thread t: threads) {
+			t.start();
+		}
+
+		//System.out.println();
+
+		/*
+		double[][] d = { { 1, 2, 3 }, { 4, 5, 6 }, { 9, 1, 3} };
+		Matrix D = new Matrix(d);
+		D.show();        
+		System.out.println();
+
+		Matrix A = Matrix.random(5, 5);
+		A.show(); 
+		System.out.println();
+
+		A.swap(1, 2);
+		A.show(); 
+		System.out.println();
+
+		Matrix B = A.transpose();
+		B.show(); 
+		System.out.println();
+
+		Matrix C = Matrix.identity(5);
+		C.show(); 
+		System.out.println();
+
+		A.plus(B).show();
+		System.out.println();
+
+		B.times(A).show();
+		System.out.println();
+
+		// shouldn't be equal since AB != BA in general    
+				System.out.println(A.times(B).eq(B.times(A)));
+		System.out.println();
+
+		Matrix b = Matrix.random(5, 1);
+		b.show();
+		System.out.println();
+
+		Matrix x = A.solve(b);
+		x.show();
+		System.out.println();
+
+		A.times(x).show();
+		 */
+
+	}
+
 	// create M-by-N matrix of 0's
 	public Matrix(int N) {
+		this(N, N);
+	}
+	// create M-by-N matrix of 0's
+	public Matrix(int M, int N) {
+		this.M = M;
 		this.N = N;
-		data = new double[N][N];
+		data = new double[M][N];
 	}
 
 	// create matrix based on 2d array
 	public Matrix(double[][] data) {
-		//M = data.length;
+		M = data.length;
 		N = data[0].length;
-		this.data = new double[N][N];
-		for (int i = 0; i < N; i++)
+		this.data = new double[M][N];
+		for (int i = 0; i < M; i++)
 			for (int j = 0; j < N; j++)
 				this.data[i][j] = data[i][j];
 	}
 
 	// copy constructor
-	private Matrix(Matrix A) { this(A.data); }
+	private Matrix(Matrix A)
+	{ 
+		this(A.data);
+	}
 
-	// create and return a random N-by-N matrix with values between 0 and 1
-	public static Matrix random(int N) {
-		Matrix A = new Matrix(N);
-		for (int i = 0; i < N; i++) {
-			double diag = 0;
+	// create and return a random M-by-N matrix with values between 0 and 1
+	public static Matrix random(int M, int N) {
+		Matrix A = new Matrix(M, N);
+		for (int i = 0; i < M; i++)
 			for (int j = 0; j < N; j++)
-				diag += A.data[i][j] = Math.random();
-			A.data[i][i] = diag;
-		}
+				A.data[i][j] = Math.random();
 		return A;
 	}
 
@@ -73,8 +157,8 @@ final public class Matrix {
 
 	// create and return the transpose of the invoking matrix
 	public Matrix transpose() {
-		Matrix A = new Matrix(N, N);
-		for (int i = 0; i < N; i++)
+		Matrix A = new Matrix(N, M);
+		for (int i = 0; i < M; i++)
 			for (int j = 0; j < N; j++)
 				A.data[j][i] = this.data[i][j];
 		return A;
@@ -83,9 +167,9 @@ final public class Matrix {
 	// return C = A + B
 	public Matrix plus(Matrix B) {
 		Matrix A = this;
-		if (B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
-		Matrix C = new Matrix(N);
-		for (int i = 0; i < N; i++)
+		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
+		Matrix C = new Matrix(M, N);
+		for (int i = 0; i < M; i++)
 			for (int j = 0; j < N; j++)
 				C.data[i][j] = A.data[i][j] + B.data[i][j];
 		return C;
@@ -95,9 +179,9 @@ final public class Matrix {
 	// return C = A - B
 	public Matrix minus(Matrix B) {
 		Matrix A = this;
-		if (B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
-		Matrix C = new Matrix(N);
-		for (int i = 0; i < N; i++)
+		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
+		Matrix C = new Matrix(M, N);
+		for (int i = 0; i < M; i++)
 			for (int j = 0; j < N; j++)
 				C.data[i][j] = A.data[i][j] - B.data[i][j];
 		return C;
@@ -106,8 +190,8 @@ final public class Matrix {
 	// does A = B exactly?
 	public boolean eq(Matrix B) {
 		Matrix A = this;
-		//if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
-		for (int i = 0; i < N; i++)
+		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
+		for (int i = 0; i < M; i++)
 			for (int j = 0; j < N; j++)
 				if (A.data[i][j] != B.data[i][j]) return false;
 		return true;
@@ -116,9 +200,9 @@ final public class Matrix {
 	// return C = A * B
 	public Matrix times(Matrix B) {
 		Matrix A = this;
-		//if (A.N != B.M) throw new RuntimeException("Illegal matrix dimensions.");
-		Matrix C = new Matrix(A.N, B.N);
-		for (int i = 0; i < C.N; i++)
+		if (A.N != B.M) throw new RuntimeException("Illegal matrix dimensions.");
+		Matrix C = new Matrix(A.M, B.N);
+		for (int i = 0; i < C.M; i++)
 			for (int j = 0; j < C.N; j++)
 				for (int k = 0; k < A.N; k++)
 					C.data[i][j] += (A.data[i][k] * B.data[k][j]);
@@ -128,8 +212,8 @@ final public class Matrix {
 
 	// return x = A^-1 b, assuming A is square and has full rank
 	public Matrix solve(Matrix rhs) {
-		//if (M != N || rhs.M != N || rhs.N != 1)
-			//throw new RuntimeException("Illegal matrix dimensions.");
+		if (M != N || rhs.M != N || rhs.N != 1)
+			throw new RuntimeException("Illegal matrix dimensions.");
 
 		// create copies of the data
 		Matrix A = new Matrix(this);
@@ -176,23 +260,20 @@ final public class Matrix {
 	}
 
 	// print matrix to standard output
-	public void show()
-	{
-		for (int i = 0; i < N; i++)
-		{
+	public void show() {
+		for (int i = 0; i < M; i++) {
 			for (int j = 0; j < N; j++) 
-				StdOut.printf("%9.4f ", data[i][j]);
-			StdOut.println();
+				System.out.printf("%9.4f ", data[i][j]);
+			System.out.println();
 		}
 	}
-
 
 
 	private static int getIntArg(String arg, int min, int max, String mesg) {
 		try {
 			int result = Integer.parseInt(arg);
 			if ( result < min || result > max ) {
-				System.err.println(mesg);
+				System.err.printf(mesg, result);
 				System.exit(1);
 			}
 			return result;
@@ -201,85 +282,7 @@ final public class Matrix {
 			System.err.println(String.format("Invalid integer input %s", arg));
 			System.exit(1);
 		}
+		return -1;
 	}
-	
-	// test client
-	public static void main (String[] args) {
-		if ( args.length != 4 ) {
-			System.err.printf("Arguments: <matrix size> <computing threads> <monitored threads> <trace interval>");
-			System.exit(1);
-		}
-		
-		int matrix = getIntArg(args[0], 10, 10000, "Invalid matrix size, must be between 10 and 10000");
-		int cthreads = getIntArg(args[1], 1, 200, "Invalid computing threads, must be between 1 and 200");
-		int tthreads = getIntArg(args[2], 1, cthreads, "Invalid monitored threads, must be between 1 and total number of threads");
-		int traceint = getIntArg(args[3], 1, 1000, "Invalid trace interval, must be between 1 and 1000 ms");
-		
-		//creating the Matrix
-		Thread threads[] = new Thread[cthreads];
-		for(int i=0; i<cthreads; i++) {
-			threads[i] = new Thread(new Runnable(){
-				public void run() {
-					Matrix A = Matrix.random(matrix, matrix );
-					A.show();
-				}
-			});
-		}
-		List threadList = Arrays.asList(threads);
-		Collections.shuffle(threadList);
-		threadList.toArray(threads);
-		Thread traced[] = Arrays.copyOf(original, tthreads);
 
-		for(Thread t: threads) {
-			t.start();
-		}
-		
-		StdOut.println();
-		
-		
-		
-		/*
-		double[][] d = { { 1, 2, 3 }, { 4, 5, 6 }, { 9, 1, 3} };
-		Matrix D = new Matrix(d);
-		D.show();        
-		StdOut.println();
-
-		Matrix A = Matrix.random(5, 5);
-		A.show(); 
-		StdOut.println();
-
-		A.swap(1, 2);
-		A.show(); 
-		StdOut.println();
-
-		Matrix B = A.transpose();
-		B.show(); 
-		StdOut.println();
-
-		Matrix C = Matrix.identity(5);
-		C.show(); 
-		StdOut.println();
-
-		A.plus(B).show();
-		StdOut.println();
-
-		B.times(A).show();
-		StdOut.println();
-
-		// shouldn't be equal since AB != BA in general    
-				StdOut.println(A.times(B).eq(B.times(A)));
-		StdOut.println();
-
-		Matrix b = Matrix.random(5, 1);
-		b.show();
-		StdOut.println();
-
-		Matrix x = A.solve(b);
-		x.show();
-		StdOut.println();
-
-		A.times(x).show();
-		*/
-
-	}
 }

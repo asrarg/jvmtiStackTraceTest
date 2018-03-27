@@ -58,6 +58,7 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="cdt.managedbuild.toolchain.gnu.mingw.base.257912384.11288938" name="GaussianEliminationMethod.java" rcbsApplicability="disable" resourcePath="Matrix.java" toolsToInvoke=""/>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
