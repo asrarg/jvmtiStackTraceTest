@@ -8,9 +8,9 @@
 extern "C" {
 #endif
 #undef StackTrace_bbuffer_size
-#define StackTrace_bbuffer_size 3200L
+#define StackTrace_bbuffer_size 50000L
 #undef StackTrace_ibuffer_size
-#define StackTrace_ibuffer_size 800L
+#define StackTrace_ibuffer_size 12500L
 /*
  * Class:     StackTrace
  * Method:    startStackTrace

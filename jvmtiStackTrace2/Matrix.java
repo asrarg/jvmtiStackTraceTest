@@ -16,6 +16,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.Locale;
+import java.util.Scanner;
 
 /******************************************************************************
  *  Compilation:  javac Matrix.java
@@ -32,6 +33,8 @@ final public class Matrix {
 
 	// test client
 	public static void main (String[] args) {
+		long startTime = System.currentTimeMillis();
+		
 		if ( args.length != 2 ) {
 			System.err.printf("Arguments: <matrix size> <computing threads>");
 			System.exit(1);
@@ -45,9 +48,11 @@ final public class Matrix {
 		for(int i=0; i<cthreads; i++) {
 			threads[i] = new Thread(new Runnable(){
 				public void run() {
-					Matrix A = Matrix.random(matrixSize, matrixSize );
-					A.show();
-					System.out.printf("**********************************END OF MATRIX********************************** %n");
+					for (int xx=0 ; xx< 10; xx++)
+					{
+						Matrix A = Matrix.random(matrixSize, matrixSize );
+						A.show();
+					}
 				}
 			});
 			threads[i].setName("Gauss");
@@ -56,7 +61,8 @@ final public class Matrix {
 		for(Thread t: threads) {
 			t.start();
 		}
-
+		long stopTime = System.currentTimeMillis();
+		System.out.println("############################### MATRIX: Elapsed time was " + (stopTime - startTime) + " miliseconds. ###############################");
 		//System.out.println();
 
 		/*
@@ -258,17 +264,31 @@ final public class Matrix {
 		return x;
 
 	}
-
+	//#############################################################################################################################
 	// print matrix to standard output
 	public void show() {
-		for (int i = 0; i < M; i++) {
-			for (int j = 0; j < N; j++) 
-				System.out.printf("%9.4f ", data[i][j]);
-			System.out.println();
+		Writer writer = null;
+		try {
+			writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("theMatrix.txt"), "utf-8"));
+			String toPrint = "";
+			for (int i = 0; i < M; i++) {
+				for (int j = 0; j < N; j++) {
+					toPrint = String.format("%9.4f ", data[i][j]);
+					writer.write(toPrint);			
+					//System.out.printf("%9.4f ", data[i][j]);
+				}
+				writer.write("\n");
+			}
+		} catch (IOException ex) {
+			System.out.println("Error while writting in file..");
+		} finally {
+			try {writer.close();} catch (Exception ex) {/*ignore*/}
 		}
 	}
-
-
+	
+	
+	
+//#############################################################################################################################
 	private static int getIntArg(String arg, int min, int max, String mesg) {
 		try {
 			int result = Integer.parseInt(arg);

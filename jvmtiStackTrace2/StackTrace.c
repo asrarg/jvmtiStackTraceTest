@@ -109,6 +109,7 @@ JNIEXPORT jstring JNICALL Java_StackTrace_getMethodName (JNIEnv *env, jobject ob
     //then getting the name of the method using the id
     char *methodName=NULL;
     err = (*jvmti)->GetMethodName(jvmti, (jmethodID) methodID, &methodName, NULL, NULL);
+    //printf("77777777777777777777777777777777777777777777777 METHOD NAME PRINT: %d .\n", methodName);
     jstring result = (*env)->NewStringUTF(env, methodName);
     (*jvmti)->Deallocate(jvmti, methodName);
     return result;
@@ -257,6 +258,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 		// Number of int values following the initial state and size value
 		int32_t data_size = 1;
+
 
 		for (int i = 0; i < thread_count; i++)
 		{

@@ -25,7 +25,7 @@ public class StackTrace {
 	public final String threadname;
 	public boolean terminated;
 	
-	public final static int bbuffer_size = 3200;
+	public final static int bbuffer_size = 50000;
 	public final static int ibuffer_size = bbuffer_size / 4;
 	public List<Integer> methodsList = new ArrayList<Integer>();
 
@@ -45,7 +45,7 @@ public class StackTrace {
 
 	private IntBuffer intBuffer;
 	private int currentPosition = 0;
-
+	
 	// ###################################################################################################################
 	public StackTrace(int tthreads, int traceint, String threadname)
 	{
@@ -56,7 +56,7 @@ public class StackTrace {
 		List<Integer> methodsList = new ArrayList<Integer>();
 	}
 	
-	
+	// ###################################################################################################################
 	//check if buffer has data in it
 	private boolean hasData()
 	{
@@ -65,17 +65,27 @@ public class StackTrace {
 
 	// ###############################################MAIN################################################################
 	public static void main(String[] args)  {
-		args = new String[] {"1", "1000", "Gauss", "Matrix", "10", "1"};
+		
+		args = new String[] {"1", "10000", "Gauss", "Matrix", "10", "1"};
 		try {
 			int tthreads = getIntArg(args[0], 1, 1000, "Invalid monitored threads, must be between 1 and total number of threads");
-			int traceint = getIntArg(args[1], 1, 1000, "Invalid trace interval, must be between 1 and 1000 ms");
+			int traceint = getIntArg(args[1], 1, 10000, "Invalid trace interval, must be between 1 and 1000 ms");
 			String threadname = args[2];
 			Class mainclass = Class.forName(args[3]);
 			Method mainmeth = mainclass.getMethod("main", args.getClass());
 			String copied[] = Arrays.copyOfRange(args, 4, args.length);
 			mainmeth.invoke(null, (Object) copied); 
 			StackTrace jniObject = new StackTrace(tthreads, traceint, threadname);
+			
+			//to measure the execution time of the code
+			long startTime = System.currentTimeMillis();
+			
 			jniObject.run();
+			
+			//to measure the execution time of the code and print it
+			long stopTime = System.currentTimeMillis();
+			System.out.println("############################### ST JAVA: Elapsed time was " + (stopTime - startTime) + " miliseconds. ###############################");
+			
 		} catch(ClassNotFoundException ex) {
 			ex.printStackTrace(System.err);
 		} catch(NoSuchMethodException ex) {
@@ -85,8 +95,11 @@ public class StackTrace {
 		} catch(Exception ex) {
 			ex.printStackTrace(System.err);
 		} 
+		
+		
+		
 	}
-
+	// ###################################################################################################################
 	private static int getIntArg(String arg, int min, int max, String mesg) {
 		try {
 			int result = Integer.parseInt(arg);
@@ -130,10 +143,6 @@ public class StackTrace {
 		threadList.toArray(threadArr);
 		final Thread traced[] = Arrays.copyOf(threadArr, tthreads);
 		
-		
-		//showing threads with ID and name for user to pick from
-		//showAllThreads();
-
 		//setting threads list
 		setThreadList(traced);
 
@@ -143,7 +152,7 @@ public class StackTrace {
 		setBuffers(intBuffer);
 
 		startStackTrace();
-
+		
 		//special thread for showTopMethods
 		new Thread(new Runnable()
 		{
@@ -151,16 +160,14 @@ public class StackTrace {
 			{
 				showTopMethods();
 			}
-		}).start();//runnable and in separate class, search for "schedualed executer service"
-
+		}).start();
 		
+		//special thread for checking dead threads, and terminating stack tracing when all threads are dead
 		new Thread(new Runnable() {
 			public void run() {
 				awaitTermination(traced);
 			}}).start();
-		//checking dead threads, deleting them from monitored threads list.
 
-		
 		//threads and synch
 		while(!terminated)
 		{
@@ -176,28 +183,25 @@ public class StackTrace {
 				consume();
 			}
 		}
-	}
 
+	}
+	// ###################################################################################################################
 	void awaitTermination(Thread traced[]) {
 		boolean canExit = false;
-	
+		int aliveThreads = traced.length;
 		while ( !canExit )
 		{
-			int aliveThreads = traced.length;
-			System.out.println("&&&&&&&&&&&&&&&&&&&&&&&&&& TRACED: " + traced.length + " &&&&&&&&&&&&&&&&&&&&&&&&&&");
+			aliveThreads = traced.length;
 			for (Thread t: traced)
 			{
-				System.out.println("&&&&&&&&&&&&&&&&&&&&&&&&&& Thread Id: " + t.getId() + ". Thread Name: " + t.getName() + " &&&&&&&&&&&&&&&&&&&&&&&&&&");
 				if ( !t.isAlive() )
 				{
-					aliveThreads = aliveThreads -1;
-					System.out.println("&&&&&&&&&&&&&&&&&&&&&&&&&& ALIVE THREADS: " + aliveThreads + " &&&&&&&&&&&&&&&&&&&&&&&&&&");
+					aliveThreads = aliveThreads - 1;
+					System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ alive threads: " + aliveThreads);
 					if(aliveThreads == 0)
 					{
 						canExit = true;
-						
-						//setStackTraceRunning(false);
-						//System.exit(0);
+						terminated = true;
 					}
 				}
 			}
@@ -215,7 +219,7 @@ public class StackTrace {
 		catch (InterruptedException ex) {
 			
 		}
-		terminated = true;
+		//terminated = true;
 	}
 	
 	// ###################################################################################################################
@@ -245,36 +249,30 @@ public class StackTrace {
 			currentPosition %= ibuffer_size;
 			int frame_count = intBuffer.get(currentPosition++);
 			currentPosition %= ibuffer_size;
-			System.out.printf("Thread Trace: %d %d %d %n", tid, state, frame_count);
+			//System.out.printf("Thread Trace: %d %d %d %d %n", tid, state, frame_count, thread_count);
 
 
 			for (int frame = 0; frame<frame_count; frame++)
 			{
-
 				int methId = intBuffer.get(currentPosition++);
 				currentPosition %= ibuffer_size;
 
 				methodsList.add(methId);
-				String methodName = getMethodName(methId);
 
 				int location = intBuffer.get(currentPosition++);
 				currentPosition %= ibuffer_size;
-
-				//System.out.printf("Frame Trace: %s %d %n", methodName, location);
 			}		 
 		}
 
+		System.out.printf("Cleanup from %d to %d, Buffer size: %d %n%n", start, currentPosition, ibuffer_size);
 
-		System.out.printf("Cleanup: %d %d %d%n", start, currentPosition, ibuffer_size);
-
+		System.out.printf("CLEANING UP: ");
 		while ( start != currentPosition )
 		{
-			System.out.printf("%d ", start);
+			System.out.printf("%d ", start);	
 			intBuffer.put(start, 0);
 			start = ( start+1 ) % ibuffer_size;
 		}
-
-		//showTopMethods(methodsList);
 
 		System.out.println();
 	}
@@ -299,22 +297,8 @@ public class StackTrace {
 
 	// ###################################################################################################################
 	//getting thread by ID
-	
-	// ###################################################################################################################
 	public Thread getThread( final long id )
 	{
-		/*
-		Set<Thread> threadSet  = Thread.getAllStackTraces().keySet();
-	    for ( Thread thread : threadSet )
-	        if ( thread.getId( ) == id )
-	        {
-	        	System.out.printf(thread.getId() + ".. name: " + thread.getName());
-	            return thread;
-	        }
-	    return null;
-		 */
-
-
 		ThreadGroup tg = Thread.currentThread().getThreadGroup();
 		while ( tg.getParent() != null )
 		{
@@ -330,7 +314,6 @@ public class StackTrace {
 				System.out.printf("getting thread by ID: %d %d %s%n", i, t[i].getId(), t[i].getName());
 				return t[i];
 			}
-			//System.out.printf("%d %d %s%n", i, t[i].getId(), t[i].getName());
 		}
 		System.out.printf("No thread found for ID: %d%n", id);
 		return null;
@@ -341,6 +324,8 @@ public class StackTrace {
 	//method to calculate % of methods freq.
 	public void showTopMethods()
 	{
+		long startTime = System.currentTimeMillis();
+
 		while(!terminated)
 		{
 			try {
@@ -361,16 +346,16 @@ public class StackTrace {
 						topIDs.put(curr, count);
 					}
 
-					int[] rep = new int[3];
+					int[] rep = new int[5];
 					for (Integer e: topIDs.keySet()) {
 						Integer count = topIDs.get(e);
 						if (count > rep[0]) {
 							rep[0] = e;
 							Arrays.sort(rep);
-							System.out.printf("METHOD LIST SIZE: %d %n", methListSize);
-							System.out.printf("METHOD LIST 3 SIZE: %d ,  %d ,  %d %n",rep[0], rep[1],rep[2]);
+							String currMethodName = getMethodName(e);
+							double percentMethod = (1.0*topIDs.get(e)/methListSize)*100;
 							System.out.printf("Method ID: %d ... Frequency: %d ... Percentage: %.2f%% ... Name: %s ...  %n", e, topIDs.get(e), 
-									(1.0*topIDs.get(e)/methListSize)*100, getMethodName(e) );
+									percentMethod, currMethodName );
 						}
 					}
 					methodsList.clear();
@@ -382,5 +367,9 @@ public class StackTrace {
 				System.out.println("*** ERROR WHILE PRINTING CALCULATIONS ***");
 			}
 		}
+
+		//to measure the execution time of the code and print it
+		long stopTime = System.currentTimeMillis();
+		System.out.println("############################### Show Top Method: Elapsed time was " + (stopTime - startTime) + " miliseconds. ###############################");
 	}	
 }
