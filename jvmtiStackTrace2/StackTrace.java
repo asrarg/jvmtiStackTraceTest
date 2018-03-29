@@ -175,8 +175,19 @@ public class StackTrace {
 			{
 				if( !hasData() )
 				{ //true = empty, false = has data
+					/*
 					System.out.println("wait");
 					intBuffer.wait();
+					*/
+					try
+					{
+					System.out.println("wait");
+					intBuffer.wait(5000);
+					}
+					catch(InterruptedException e)
+					{
+					//timeout
+					}
 				}
 			}
 			synchronized(methodsList) {
@@ -187,6 +198,22 @@ public class StackTrace {
 	}
 	// ###################################################################################################################
 	void awaitTermination(Thread traced[]) {
+		
+		for(int i = 0; i < traced.length; i++)
+		{
+			//wait for all threaded process to finish
+			try
+			{
+				traced[i].join();
+				
+            } catch (InterruptedException e)
+			{
+            }
+		}
+		terminated = true;
+			
+		
+		/*
 		boolean canExit = false;
 		int aliveThreads = traced.length;
 		while ( !canExit )
@@ -219,62 +246,105 @@ public class StackTrace {
 		catch (InterruptedException ex) {
 			
 		}
+		*/
 		//terminated = true;
 	}
 	
+	
+	// ###################################################################################################################
+	//getting next element and updating current position 
+	public int nextBufferElement()
+	{
+		int element = intBuffer.get(currentPosition);
+		currentPosition = (currentPosition + 1) % ibuffer_size;
+		
+		return element;
+	}
+
 	// ###################################################################################################################
 	//consume method
 	public void consume() throws InterruptedException
 	{
+		/*
 		if ( !hasData() )
 		{
 			return;
 		}
+		*/
 
 		System.out.printf("%n");
 		//printing what is in buffer
 		int start = currentPosition;
+		/*
 		int tagS = intBuffer.get(currentPosition++);
 		currentPosition %= ibuffer_size;
+		*/
+		int tagS = nextBufferElement();
+		
+		
+		/*
 		int data_size = intBuffer.get(currentPosition++);
 		currentPosition %= ibuffer_size;
+		*/
+		int data_size = nextBufferElement();
+		
 		int thread_count = intBuffer.get(currentPosition++);
+		//should we update current position here?
+		
 		System.out.printf("Stack Trace: %d %d %d %n", tagS, data_size, thread_count);
 
 		for(int thread = 0; thread<thread_count; thread++)
 		{
+			/*
 			int tid = intBuffer.get(currentPosition++);
 			currentPosition %= ibuffer_size;
+			*/
+			int tid = nextBufferElement();
+			
+			/*
 			int state = intBuffer.get(currentPosition++);
 			currentPosition %= ibuffer_size;
+			*/
+			int state = nextBufferElement();
+			
+			/*
 			int frame_count = intBuffer.get(currentPosition++);
 			currentPosition %= ibuffer_size;
+			*/
+			int frame_count = nextBufferElement();
+			
+			
 			//System.out.printf("Thread Trace: %d %d %d %d %n", tid, state, frame_count, thread_count);
 
 
 			for (int frame = 0; frame<frame_count; frame++)
 			{
+				/*
 				int methId = intBuffer.get(currentPosition++);
 				currentPosition %= ibuffer_size;
+				*/
+				int methId = nextBufferElement();
 
 				methodsList.add(methId);
 
+				/*
 				int location = intBuffer.get(currentPosition++);
 				currentPosition %= ibuffer_size;
+				*/
+				int location = nextBufferElement();
 			}		 
 		}
 
 		System.out.printf("Cleanup from %d to %d, Buffer size: %d %n%n", start, currentPosition, ibuffer_size);
 
-		System.out.printf("CLEANING UP: ");
 		while ( start != currentPosition )
 		{
-			System.out.printf("%d ", start);	
+			//System.out.printf("%d ", start);	
 			intBuffer.put(start, 0);
 			start = ( start+1 ) % ibuffer_size;
 		}
 
-		System.out.println();
+		System.out.println("Cleanup done");
 	}
 
 
@@ -326,47 +396,60 @@ public class StackTrace {
 	{
 		long startTime = System.currentTimeMillis();
 
-		while(!terminated)
-		{
+		//while(!terminated)
+		//{
 			try {
 				Thread.sleep(6000);
-				synchronized(methodsList)
-				{
+				List<Integer> oldList = this.methodsList;
+				methodsList = new ArrayList<Integer>();
+				//synchronized(methodsList)
+				//{
+					System.out.printf("######################################################################################## %n");
+					final int countMap[]= new int[65537]; // Must be at least as big as ID_CACHE_SIZE in native part
+					int methListSize = oldList.size();
+
+					for (Integer element : oldList) {
+						if ( element.intValue() >= 0 && element.intValue() < countMap.length ) {
+							countMap[element.intValue()]++;
+							//System.out.printf("Increased %d %n", element.intValue());
+						}
+					}
+
+					List<Integer> topList = new ArrayList<Integer>();
+					for(int i=0; i<countMap.length; i++) {
+						if ( countMap[i] != 0 ) {
+							topList.add(i);
+						}
+					}
+					Collections.sort(topList, new Comparator<Integer>() {
+						public int compare(Integer o1, Integer o2) {
+							return countMap[o2]-countMap[o1];
+						}
+					});
+					System.out.printf("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ %n");
+					
+					for(int mList=0; mList<5 && mList<topList.size();mList++)
+					{
+						int methId = topList.get(mList);
+						String currMethodName = getMethodName(methId);
+						int methFreq = countMap[methId];
+						System.out.println(methFreq);
+						System.out.println(topList.size());
+						double percentMethod = (methFreq/topList.size())*1000;
+						System.out.println(percentMethod);
+						System.out.printf("Method ID: %d ... Frequency: %d ... Percentage: %f ... Name: %s ...  %n", methId, methFreq, 
+								percentMethod, currMethodName );
+					}
+					oldList.clear();
+				//}
+
 					System.out.printf("*************************************************************************************** %n");
-					Map<Integer, Integer> topIDs = new HashMap<Integer, Integer>();
-					int methListSize = methodsList.size();
-
-					for (int element : methodsList) {
-						int curr = element;
-						Integer count = 1;
-						if (topIDs.containsKey(curr)) {
-							count = topIDs.get(curr);
-							count++;
-						}
-						topIDs.put(curr, count);
-					}
-
-					int[] rep = new int[5];
-					for (Integer e: topIDs.keySet()) {
-						Integer count = topIDs.get(e);
-						if (count > rep[0]) {
-							rep[0] = e;
-							Arrays.sort(rep);
-							String currMethodName = getMethodName(e);
-							double percentMethod = (1.0*topIDs.get(e)/methListSize)*100;
-							System.out.printf("Method ID: %d ... Frequency: %d ... Percentage: %.2f%% ... Name: %s ...  %n", e, topIDs.get(e), 
-									percentMethod, currMethodName );
-						}
-					}
-					methodsList.clear();
-				}
-
-				System.out.printf("*************************************************************************************** %n");
 			} catch (Exception e)
 			{
+				e.printStackTrace();
 				System.out.println("*** ERROR WHILE PRINTING CALCULATIONS ***");
 			}
-		}
+		//}
 
 		//to measure the execution time of the code and print it
 		long stopTime = System.currentTimeMillis();

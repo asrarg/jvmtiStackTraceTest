@@ -91,6 +91,7 @@ int addMethodId(jmethodID methId)
         }
     }
     g_idCache[location] = methId;
+    printf("Added %p at location %d\n", methId, location);
     return location;
 }
 
@@ -104,12 +105,13 @@ JNIEXPORT jstring JNICALL Java_StackTrace_getMethodName (JNIEnv *env, jobject ob
     jmethodID methodID = getMethodId(intValue);
     if (methodID == NULL )
     {
+        printf("NATIVE: |-------------------------------------------------------------- GetMethodName: %d %s\n", intValue, "NULL");
         return NULL;
     }
     //then getting the name of the method using the id
     char *methodName=NULL;
     err = (*jvmti)->GetMethodName(jvmti, (jmethodID) methodID, &methodName, NULL, NULL);
-    //printf("77777777777777777777777777777777777777777777777 METHOD NAME PRINT: %d .\n", methodName);
+    printf("NATIVE: |-------------------------------------------------------------- GetMethodName: %d %s\n", intValue, methodName);
     jstring result = (*env)->NewStringUTF(env, methodName);
     (*jvmti)->Deallocate(jvmti, methodName);
     return result;
@@ -224,6 +226,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 #else
 		usleep(g_sleepTimer*1000);
 #endif
+
 		if ( (*jvmti)->GetPhase(jvmti, &phase) == JVMTI_ERROR_NONE && phase == JVMTI_PHASE_DEAD  ) {
 			printf("Terminating stack trace\n");
 			break;
@@ -248,10 +251,12 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 
 		if (err != JVMTI_ERROR_NONE)
 		{
+
 			if ( err == JVMTI_ERROR_WRONG_PHASE && (*jvmti)->GetPhase(jvmti, &phase) == JVMTI_ERROR_NONE && phase == JVMTI_PHASE_DEAD ) {
 				printf("Terminating stack trace\n");
 				break;
 			}
+
 			check_jvmti_error(err, "Error while getting thread infos");
 			continue;
 		}
