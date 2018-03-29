@@ -91,7 +91,7 @@ int addMethodId(jmethodID methId)
         }
     }
     g_idCache[location] = methId;
-    printf("Added %p at location %d\n", methId, location);
+    //printf("Added %p at location %d\n", methId, location);
     return location;
 }
 
