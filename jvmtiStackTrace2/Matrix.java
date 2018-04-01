@@ -30,7 +30,6 @@ final public class Matrix {
 	private final int M;             // number of rows
 	private final int N;             // number of columns
 	private final double[][] data;   // M-by-N array
-
 	// test client
 	public static void main (String[] args) {
 		long startTime = System.currentTimeMillis();
@@ -48,10 +47,24 @@ final public class Matrix {
 		for(int i=0; i<cthreads; i++) {
 			threads[i] = new Thread(new Runnable(){
 				public void run() {
-					for (int xx=0 ; xx< 10; xx++)
+					for (int xx=0 ; xx< 100; xx++)
 					{
+						//creating random matrixes and performing operations on them
 						Matrix A = Matrix.random(matrixSize, matrixSize );
+						Matrix B = Matrix.random(matrixSize, matrixSize );
+						A.plus(B).show();
+						B.times(A).show();
 						A.show();
+						//creating 2 other matrixes for Gaussian Elimination
+						Matrix a = Matrix.random(5, 5);
+						Matrix b = Matrix.random(5, 1);
+						Matrix x = a.solve(b);
+						x.show();
+						
+						Matrix c = Matrix.random(5, 5);
+						Matrix d = Matrix.random(5, 1);
+						Matrix z = c.solve(d);
+						z.show();
 					}
 				}
 			});
@@ -173,7 +186,7 @@ final public class Matrix {
 	// return C = A + B
 	public Matrix plus(Matrix B) {
 		Matrix A = this;
-		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
+		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.1");
 		Matrix C = new Matrix(M, N);
 		for (int i = 0; i < M; i++)
 			for (int j = 0; j < N; j++)
@@ -185,7 +198,7 @@ final public class Matrix {
 	// return C = A - B
 	public Matrix minus(Matrix B) {
 		Matrix A = this;
-		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
+		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.2");
 		Matrix C = new Matrix(M, N);
 		for (int i = 0; i < M; i++)
 			for (int j = 0; j < N; j++)
@@ -196,7 +209,7 @@ final public class Matrix {
 	// does A = B exactly?
 	public boolean eq(Matrix B) {
 		Matrix A = this;
-		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.");
+		if (B.M != A.M || B.N != A.N) throw new RuntimeException("Illegal matrix dimensions.3");
 		for (int i = 0; i < M; i++)
 			for (int j = 0; j < N; j++)
 				if (A.data[i][j] != B.data[i][j]) return false;
@@ -206,7 +219,7 @@ final public class Matrix {
 	// return C = A * B
 	public Matrix times(Matrix B) {
 		Matrix A = this;
-		if (A.N != B.M) throw new RuntimeException("Illegal matrix dimensions.");
+		if (A.N != B.M) throw new RuntimeException("Illegal matrix dimensions.4");
 		Matrix C = new Matrix(A.M, B.N);
 		for (int i = 0; i < C.M; i++)
 			for (int j = 0; j < C.N; j++)
@@ -219,7 +232,7 @@ final public class Matrix {
 	// return x = A^-1 b, assuming A is square and has full rank
 	public Matrix solve(Matrix rhs) {
 		if (M != N || rhs.M != N || rhs.N != 1)
-			throw new RuntimeException("Illegal matrix dimensions.");
+			throw new RuntimeException("Illegal matrix dimensions.5");
 
 		// create copies of the data
 		Matrix A = new Matrix(this);

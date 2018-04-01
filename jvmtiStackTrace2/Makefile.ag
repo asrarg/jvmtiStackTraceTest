@@ -10,7 +10,7 @@ ifeq ($(shell uname), Linux)
   	JAVA_HOME=/usr/lib/jvm/jdk-9.0.4
   else
   	ifeq ($(shell java -version 2>&1|grep 1.8.0 >/dev/null; printf $$?),0)
-  		JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+  		JAVA_HOME=/usr/lib/jvm/jdk1.8.0_162
   	endif
   endif
   JAVA=java
