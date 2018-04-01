@@ -93,7 +93,6 @@ int addMethodId(jmethodID methId)
 
     return location;
 }
-
 // #####################################################################################################################
 JNIEXPORT jstring JNICALL Java_StackTrace_getMethodName (JNIEnv *env, jobject obj, jint intValue)
 {
@@ -104,13 +103,11 @@ JNIEXPORT jstring JNICALL Java_StackTrace_getMethodName (JNIEnv *env, jobject ob
     jmethodID methodID = getMethodId(intValue);
     if (methodID == NULL )
     {
-        //printf("NATIVE: |-------------------------------------------------------------- GetMethodName: %d %s\n", intValue, "NULL");
         return NULL;
     }
     //then getting the name of the method using the id
     char *methodName=NULL;
     err = (*jvmti)->GetMethodName(jvmti, (jmethodID) methodID, &methodName, NULL, NULL);
-    //printf("NATIVE: |-------------------------------------------------------------- GetMethodName: %d %s\n", intValue, methodName);
     jstring result = (*env)->NewStringUTF(env, methodName);
     (*jvmti)->Deallocate(jvmti, methodName);
     return result;
@@ -123,7 +120,7 @@ void check_jvmti_error_internal(const char *file, int line, jvmtiError error, ch
 	// check if it is an error
 	if (error != JVMTI_ERROR_NONE)
 	{
-		// getting the name of the error (is equal to the enum name: https://harmony.apache.org/subcomponents/drlvm/doxygen/vmcore/html/jvmti__types_8h.html#07555e9941d09b4404723e38e5defe39)
+		// getting the name of the error
 		char* err_name = NULL;
 		(*jvmti)->GetErrorName(jvmti, error, &err_name);
 
@@ -218,7 +215,7 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 		jvmtiStackInfo *stack_info;
 		jint thread_count;
 		jvmtiError err;
-		//if the threads list is NOT NULL then use this: GetThreadListStackTraces(jvmtiEnv* env, int thread_count,const jthread* thread_list,jint max_frame_count, jvmtiStackInfo** stack_info_ptr)
+		//if the threads list is NOT NULL then use GetThreadListStackTraces
 		//if is equal to NULL then use the rest
 		if(g_threadList != NULL)
 		{
@@ -276,8 +273,6 @@ void getStackTrace(jvmtiEnv* jvmti, JNIEnv* env, void* arg)
 				jint methIdx = addMethodId(frames[j].method);
 				memcpy(&g_dataBuffer[currentOffset],&methIdx, sizeof(jint));
 				SET_CURRENT_OFFSET(currentOffset, g_dataCapacity);
-
-
 				memcpy(&g_dataBuffer[currentOffset], &frames[j].location, sizeof(jint)); // it is the bytecode location
 				SET_CURRENT_OFFSET(currentOffset, g_dataCapacity);
 			} //end of frames loop
@@ -321,7 +316,7 @@ JNIEXPORT void JNICALL Java_StackTrace_startStackTrace(JNIEnv *env, jobject obj)
 	jthread threadObj = (*env)->NewObject(env, threadClass, methodID);
 	if (obj == NULL)
 		printf("jobject error.");
-// like thread.start() for native thread
+	// like thread.start() for native thread
 	jvmtiError error = (*jvmti)->RunAgentThread(jvmti, threadObj, getStackTrace, NULL, JVMTI_THREAD_MAX_PRIORITY);
 	check_jvmti_error(error, "Could not start thread");
 	printf("Agent Thread started\n");
@@ -332,127 +327,9 @@ JNIEXPORT jobjectArray JNICALL Java_StackTrace_stopStackTrace(JNIEnv *env, jobje
 {
 	g_stackTraceRunning = false;
 }
-// #####################################################################################################################
-// Sample method - returning the name of the current thread
-JNIEXPORT jstring JNICALL Java_StackTrace_getCurrentThreadName(JNIEnv *env, jobject obj)
-{
-	printf("NATIVE: Getting current thread name...\n");
-	jvmtiError error;
-	// obtaining the current thread
-	jthread currentThread;
-	error = (*jvmti)->GetCurrentThread(jvmti, &currentThread);
-	check_jvmti_error(error, "Error while getting current thread");
-	// fetching the name of the current thread
-	jvmtiThreadInfo threadInfo;
-	error = (*jvmti)->GetThreadInfo(jvmti,currentThread,&threadInfo);
-	check_jvmti_error(error, "Error while getting thread infos");
-	// creating a new jstring based on the thread name and returning it
-	char* threadName = threadInfo.name;
-	return (*env)->NewStringUTF(env, threadName);
-}
 
 // #####################################################################################################################
-// Sample method - print the top method on each thread/stack
-JNIEXPORT void JNICALL Java_StackTrace_printTopMethodOfThreads(JNIEnv *env, jobject obj)
-{
-	printf("NATIVE: Printing top methods...\n");
-	jvmtiStackInfo *stack_info;
-	jint thread_count;
-	jvmtiError err;
-	// fetching all stack traces, but just the first frame of each thread
-	err = (*jvmti)->GetAllStackTraces(jvmti, 1, &stack_info, &thread_count);
-	if (err != JVMTI_ERROR_NONE)
-	{
-		check_jvmti_error(err, "Error while getting thread infos");
-	} else {
-		printf("NATIVE: Found %d threads\n", thread_count);
-		// iterating through all threads
-		for (int i = 0; i < thread_count; i++)
-		{
-			// extracting some variables
-			jvmtiStackInfo *infop = &stack_info[i];
-			jthread thread = infop->thread;
-			jint state = infop->state;
-			jvmtiFrameInfo *frames = infop->frame_buffer;
-			// fetching the thread info of the thread
-			jvmtiThreadInfo threadInfo;
-			err = (*jvmti)->GetThreadInfo(jvmti, thread, &threadInfo);
-			printf("NATIVE: > Thread name: %s\n", threadInfo.name);
-			printf("NATIVE: |-- State: %d\n", state);
-			if (infop->frame_count <= 0)
-			{
-				printf("NATIVE: |-- No method executed\n");
-			} else {
-				// this loop is not necessary in this example (breaking in the first iteration), just for showing that the frames could be iterated
-				// looping over the frames and printing the method of each frame
-				for (int n=0; n < infop->frame_count; n++)
-				{
-					jmethodID topMethodId = frames[n].method;
-					// getting the method name based on the method id of the frame
-					char *methodName;
-					err = (*jvmti)->GetMethodName(jvmti, topMethodId, &methodName, NULL, NULL);
-					check_jvmti_error(err, "Error while getting method name");
-					printf("NATIVE: |-- Executing method: %s\n", methodName);
-					break;
-				}
-			}
-		}
-		/* this one Deallocate call frees all data allocated by GetAllStackTraces */
-		err = (*jvmti)->Deallocate(jvmti, (unsigned char *)stack_info);
-		check_jvmti_error(err, "Error while deallocating memory");
-	}
-}
-// #####################################################################################################################
-// Sample method - returns a string array containing the top methods
-JNIEXPORT jobjectArray JNICALL Java_StackTrace_getTopMethods(JNIEnv *env, jobject obj)
-{
-	printf("NATIVE: Returning top methods...\n");
-	// NOTE - this method is more or less exactly the same as Java_StackTrace_printTopMethodOfThreads (two above) - the diffrence is that the methods are not printed but returned as an array like in the Java_StackTrace_getStringArray method (one above)
-	// read the Java_StackTrace_printTopMethodOfThreads for a more detailed explanation what's going on
-	jvmtiStackInfo *stack_info;
-	jint thread_count;
-	jvmtiError err;
-	jobjectArray myArray = NULL;
-	// fetching all stack traces, but just the first frame of each thread
-	err = (*jvmti)->GetAllStackTraces(jvmti, 1, &stack_info, &thread_count);
-	if (err != JVMTI_ERROR_NONE)
-	{
-		check_jvmti_error(err, "Error while getting thread infos");
-	}
-	else
-	{
-		// creating array
-		myArray = (*env)->NewObjectArray(env, thread_count, (*env)->FindClass(env,"java/lang/String"), 0);
-		// iterating through all threads
-		for (int i = 0; i < thread_count; i++)
-		{
-			// extracting some variables
-			jvmtiStackInfo *infop = &stack_info[i];
-			jvmtiFrameInfo *frames = infop->frame_buffer;
-			if (infop->frame_count > 0)
-			{
-				jmethodID topMethodId = frames[0].method;
-				// getting the method name based on the method id of the frame
-				char *methodName;
-				err = (*jvmti)->GetMethodName(jvmti, topMethodId, &methodName, NULL, NULL);
-				check_jvmti_error(err, "Error while getting method name");
-				jstring methodnameAsString = (*env)->NewStringUTF(env, methodName);
-				(*env)->SetObjectArrayElement(env, myArray, i, methodnameAsString);
-			} else {
-				(*env)->SetObjectArrayElement(env, myArray, i, (*env)->NewStringUTF(env, "n/a"));
-			}
-		}
-		/* this one Deallocate call frees all data allocated by GetAllStackTraces */
-		err = (*jvmti)->Deallocate(jvmti, (unsigned char *)stack_info);
-		check_jvmti_error(err, "Error while deallocating memory");
-	}
-	return myArray;
-}
-// #####################################################################################################################
-// #####################################################################################################################
-// #####################################################################################################################
 // The method which is executed when the agent is initialized (e.g. agent library loaded)
-//
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
 	printf("\nNATIVE: Agent was loaded!\n");

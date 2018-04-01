@@ -24,10 +24,6 @@ public class StackTrace {
 
 	//getting stack trace as a lineared byte buffer every x ms (y is for switching fetching for stacktrace on or off)
 	public native void startStackTrace();
-	//getting top methods in stack trace
-	public native String[] getTopMethods();
-	//getting current thread name
-	public native String getCurrentThreadName(); 
 	public native void setSleepTime(int sTime);
 	public native void setStackTraceRunning(boolean x);
 	public native void setThreadList(Thread threadList[]);
@@ -192,39 +188,6 @@ public class StackTrace {
             }
 		}
 		terminated = true;
-		/*
-		boolean canExit = false;
-		int aliveThreads = traced.length;
-		while ( !canExit )
-		{
-			aliveThreads = traced.length;
-			for (Thread t: traced)
-			{
-				if ( !t.isAlive() )
-				{
-					aliveThreads = aliveThreads - 1;
-					System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ alive threads: " + aliveThreads);
-					if(aliveThreads == 0)
-					{
-						canExit = true;
-						terminated = true;
-					}
-				}
-			}
-			try {
-				Thread.sleep(200);
-			}
-			catch (InterruptedException ex) {
-			}
-		}
-		System.out.println("All Threads dead!");
-		try {
-			Thread.sleep(200);
-		}
-		catch (InterruptedException ex) {
-		}
-		*/
-		//terminated = true;
 	}
 	
 	
@@ -351,9 +314,6 @@ public class StackTrace {
 				String currMethodName = getMethodName(methId);
 				int methFreq = countMap[methId];
 				double percentMethod = (1.0*methFreq/topList.size())*100;
-				//System.out.println(methFreq);
-				//System.out.println(topList.size());
-				//System.out.println(percentMethod);
 				System.out.printf("Method ID: %d ... Frequency: %d ... Percentage: %.2f%% ... Name: %s ...  %n", methId, methFreq, 
 						percentMethod, currMethodName );
 			}

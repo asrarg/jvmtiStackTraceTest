@@ -21,22 +21,6 @@ JNIEXPORT void JNICALL Java_StackTrace_startStackTrace
 
 /*
  * Class:     StackTrace
- * Method:    getTopMethods
- * Signature: ()[Ljava/lang/String;
- */
-JNIEXPORT jobjectArray JNICALL Java_StackTrace_getTopMethods
-  (JNIEnv *, jobject);
-
-/*
- * Class:     StackTrace
- * Method:    getCurrentThreadName
- * Signature: ()Ljava/lang/String;
- */
-JNIEXPORT jstring JNICALL Java_StackTrace_getCurrentThreadName
-  (JNIEnv *, jobject);
-
-/*
- * Class:     StackTrace
  * Method:    setSleepTime
  * Signature: (I)V
  */
