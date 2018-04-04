@@ -18,14 +18,6 @@ import java.io.UnsupportedEncodingException;
 import java.util.Locale;
 import java.util.Scanner;
 
-/******************************************************************************
- *  Compilation:  javac Matrix.java
- *  Execution:    java Matrix
- *
- *  A bare-bones immutable data type for N-by-N matrices.
- *
- ******************************************************************************/
-
 final public class Matrix {
 	private final int M;             // number of rows
 	private final int N;             // number of columns
@@ -33,15 +25,12 @@ final public class Matrix {
 	// test client
 	public static void main (String[] args) {
 		long startTime = System.currentTimeMillis();
-		
 		if ( args.length != 2 ) {
 			System.err.printf("Arguments: <matrix size> <computing threads>");
 			System.exit(1);
 		}
-
 		final int matrixSize = getIntArg(args[0], 10, 10000, "Invalid matrix size %d, must be between 10 and 10000");
 		final int cthreads = getIntArg(args[1], 1, 200, "Invalid computing threads %d, must be between 1 and 200");
-
 		//creating the Matrix
 		Thread threads[] = new Thread[cthreads];
 		for(int i=0; i<cthreads; i++) {
@@ -70,57 +59,11 @@ final public class Matrix {
 			});
 			threads[i].setName("Gauss");
 		}
-
 		for(Thread t: threads) {
 			t.start();
 		}
 		long stopTime = System.currentTimeMillis();
 		System.out.println("############################### MATRIX: Elapsed time was " + (stopTime - startTime) + " miliseconds. ###############################");
-		//System.out.println();
-
-		/*
-		double[][] d = { { 1, 2, 3 }, { 4, 5, 6 }, { 9, 1, 3} };
-		Matrix D = new Matrix(d);
-		D.show();        
-		System.out.println();
-
-		Matrix A = Matrix.random(5, 5);
-		A.show(); 
-		System.out.println();
-
-		A.swap(1, 2);
-		A.show(); 
-		System.out.println();
-
-		Matrix B = A.transpose();
-		B.show(); 
-		System.out.println();
-
-		Matrix C = Matrix.identity(5);
-		C.show(); 
-		System.out.println();
-
-		A.plus(B).show();
-		System.out.println();
-
-		B.times(A).show();
-		System.out.println();
-
-		// shouldn't be equal since AB != BA in general    
-				System.out.println(A.times(B).eq(B.times(A)));
-		System.out.println();
-
-		Matrix b = Matrix.random(5, 1);
-		b.show();
-		System.out.println();
-
-		Matrix x = A.solve(b);
-		x.show();
-		System.out.println();
-
-		A.times(x).show();
-		 */
-
 	}
 
 	// create M-by-N matrix of 0's
@@ -133,7 +76,6 @@ final public class Matrix {
 		this.N = N;
 		data = new double[M][N];
 	}
-
 	// create matrix based on 2d array
 	public Matrix(double[][] data) {
 		M = data.length;
@@ -143,13 +85,11 @@ final public class Matrix {
 			for (int j = 0; j < N; j++)
 				this.data[i][j] = data[i][j];
 	}
-
 	// copy constructor
 	private Matrix(Matrix A)
 	{ 
 		this(A.data);
 	}
-
 	// create and return a random M-by-N matrix with values between 0 and 1
 	public static Matrix random(int M, int N) {
 		Matrix A = new Matrix(M, N);
@@ -158,7 +98,6 @@ final public class Matrix {
 				A.data[i][j] = Math.random();
 		return A;
 	}
-
 	// create and return the N-by-N identity matrix
 	public static Matrix identity(int N) {
 		Matrix I = new Matrix(N, N);
@@ -166,14 +105,12 @@ final public class Matrix {
 			I.data[i][i] = 1;
 		return I;
 	}
-
 	// swap rows i and j
 	private void swap(int i, int j) {
 		double[] temp = data[i];
 		data[i] = data[j];
 		data[j] = temp;
 	}
-
 	// create and return the transpose of the invoking matrix
 	public Matrix transpose() {
 		Matrix A = new Matrix(N, M);
@@ -182,7 +119,6 @@ final public class Matrix {
 				A.data[j][i] = this.data[i][j];
 		return A;
 	}
-
 	// return C = A + B
 	public Matrix plus(Matrix B) {
 		Matrix A = this;
@@ -193,8 +129,6 @@ final public class Matrix {
 				C.data[i][j] = A.data[i][j] + B.data[i][j];
 		return C;
 	}
-
-
 	// return C = A - B
 	public Matrix minus(Matrix B) {
 		Matrix A = this;
@@ -215,7 +149,6 @@ final public class Matrix {
 				if (A.data[i][j] != B.data[i][j]) return false;
 		return true;
 	}
-
 	// return C = A * B
 	public Matrix times(Matrix B) {
 		Matrix A = this;
@@ -227,20 +160,15 @@ final public class Matrix {
 					C.data[i][j] += (A.data[i][k] * B.data[k][j]);
 		return C;
 	}
-
-
 	// return x = A^-1 b, assuming A is square and has full rank
 	public Matrix solve(Matrix rhs) {
 		if (M != N || rhs.M != N || rhs.N != 1)
 			throw new RuntimeException("Illegal matrix dimensions.5");
-
 		// create copies of the data
 		Matrix A = new Matrix(this);
 		Matrix b = new Matrix(rhs);
-
 		// Gaussian elimination with partial pivoting
 		for (int i = 0; i < N; i++) {
-
 			// find pivot row and swap
 			int max = i;
 			for (int j = i + 1; j < N; j++)
@@ -248,14 +176,11 @@ final public class Matrix {
 					max = j;
 			A.swap(i, max);
 			b.swap(i, max);
-
 			// singular
 			if (A.data[i][i] == 0.0) throw new RuntimeException("Matrix is singular.");
-
 			// pivot within b
 			for (int j = i + 1; j < N; j++)
 				b.data[j][0] -= b.data[i][0] * A.data[j][i] / A.data[i][i];
-
 			// pivot within A
 			for (int j = i + 1; j < N; j++) {
 				double m = A.data[j][i] / A.data[i][i];
@@ -265,7 +190,6 @@ final public class Matrix {
 				A.data[j][i] = 0.0;
 			}
 		}
-
 		// back substitution
 		Matrix x = new Matrix(N, 1);
 		for (int j = N - 1; j >= 0; j--) {
@@ -275,7 +199,6 @@ final public class Matrix {
 			x.data[j][0] = (b.data[j][0] - t) / A.data[j][j];
 		}
 		return x;
-
 	}
 	//#############################################################################################################################
 	// print matrix to standard output
@@ -298,9 +221,6 @@ final public class Matrix {
 			try {writer.close();} catch (Exception ex) {/*ignore*/}
 		}
 	}
-	
-	
-	
 //#############################################################################################################################
 	private static int getIntArg(String arg, int min, int max, String mesg) {
 		try {
@@ -317,5 +237,4 @@ final public class Matrix {
 		}
 		return -1;
 	}
-
 }
